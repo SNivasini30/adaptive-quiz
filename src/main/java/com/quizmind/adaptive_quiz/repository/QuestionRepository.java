@@ -24,7 +24,10 @@ public interface QuestionRepository extends JpaRepository<GeneratedQuestion, Lon
 
     List<GeneratedQuestion> findByApprovalStatusAndTopicAndDifficulty(ApprovalStatus status, String topic, Difficulty difficulty);
 
-    @Query("SELECT DISTINCT q.topic FROM GeneratedQuestion q WHERE q.approvalStatus = 'APPROVED'")
+    @Query("SELECT q FROM GeneratedQuestion q WHERE q.approvalStatus = 'APPROVED' AND (q.document IS NULL OR q.document.uploadedBy IS NULL OR q.document.uploadedBy.role = com.quizmind.adaptive_quiz.model.UserRole.TEACHER)")
+    List<GeneratedQuestion> findSharedApprovedQuestions();
+
+    @Query("SELECT DISTINCT q.topic FROM GeneratedQuestion q WHERE q.approvalStatus = 'APPROVED' AND (q.document IS NULL OR q.document.uploadedBy IS NULL OR q.document.uploadedBy.role = com.quizmind.adaptive_quiz.model.UserRole.TEACHER)")
     List<String> findDistinctApprovedTopics();
 
     @Query("SELECT DISTINCT q.topic FROM GeneratedQuestion q")

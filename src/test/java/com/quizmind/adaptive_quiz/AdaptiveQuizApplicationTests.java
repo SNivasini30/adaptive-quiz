@@ -424,10 +424,11 @@ class AdaptiveQuizApplicationTests {
         ResponseEntity<?> studentApproveRes = questionController.approveQuestion(pendingQ.getId(), studentReq);
         assertEquals(HttpStatus.FORBIDDEN, studentApproveRes.getStatusCode(), "Students must NOT be allowed to approve questions");
 
-        // 2. Student attempts PDF upload -> Must be rejected (403 FORBIDDEN)
-        MockMultipartFile file = new MockMultipartFile("file", "notes.pdf", "application/pdf", "dummy content".getBytes());
-        ResponseEntity<?> studentUploadRes = pdfController.uploadPdf(file, studentReq);
-        assertEquals(HttpStatus.FORBIDDEN, studentUploadRes.getStatusCode(), "Students must NOT be allowed to upload PDF documents");
+        // 2. Student attempts question editing -> Must be rejected (403 FORBIDDEN)
+        QuestionDto editDto = new QuestionDto(pendingQ);
+        editDto.setQuestionText("Unauthorized question edit");
+        ResponseEntity<?> studentEditRes = questionController.updateQuestion(pendingQ.getId(), editDto, studentReq);
+        assertEquals(HttpStatus.FORBIDDEN, studentEditRes.getStatusCode(), "Students must NOT be allowed to edit questions");
 
         // 3. Student attempts to access Teacher Dashboard endpoints -> Must be rejected (403 FORBIDDEN)
         ResponseEntity<?> studentViewStudents = teacherController.getTeacherStudents(studentReq);
@@ -544,9 +545,10 @@ class AdaptiveQuizApplicationTests {
         assertTrue(genCount >= 2, "Should generate multiple questions from educational sentences");
 
         // 5. Retrieve Questions for Document
-        ResponseEntity<List<QuestionDto>> docQuestions = questionController.getQuestionsByDocument(docId);
+        ResponseEntity<?> docQuestions = questionController.getQuestionsByDocument(docId);
         assertEquals(HttpStatus.OK, docQuestions.getStatusCode());
-        List<QuestionDto> list = docQuestions.getBody();
+        @SuppressWarnings("unchecked")
+        List<QuestionDto> list = (List<QuestionDto>) docQuestions.getBody();
         assertNotNull(list);
         assertFalse(list.isEmpty());
 
@@ -592,5 +594,96 @@ class AdaptiveQuizApplicationTests {
         MockMultipartFile corruptFile = new MockMultipartFile("file", "corrupt.pdf", "application/pdf", "corrupted non pdf bytes".getBytes());
         ResponseEntity<?> corruptRes = pdfController.uploadPdf(corruptFile, teacherReq);
         assertTrue(corruptRes.getStatusCode() == HttpStatus.BAD_REQUEST || corruptRes.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void testStudentPdfUploadAndPrivateWorkflow() throws Exception {
+        long time = System.currentTimeMillis();
+        // 1. Create Student 1 and Student 2
+        RegisterRequest s1Reg = new RegisterRequest("std_uploader_" + time, "pass123", "Student Uploader " + time, null, UserRole.STUDENT);
+        AuthResponse s1Auth = authService.register(s1Reg, null);
+        assertNotNull(s1Auth);
+
+        RegisterRequest s2Reg = new RegisterRequest("std_other_" + time, "pass123", "Student Other " + time, null, UserRole.STUDENT);
+        AuthResponse s2Auth = authService.register(s2Reg, null);
+        assertNotNull(s2Auth);
+
+        MockHttpServletRequest s1Req = new MockHttpServletRequest();
+        s1Req.addHeader("X-Auth-Token", s1Auth.getToken());
+
+        MockHttpServletRequest s2Req = new MockHttpServletRequest();
+        s2Req.addHeader("X-Auth-Token", s2Auth.getToken());
+
+        // 2. Student 1 uploads a PDF study material
+        byte[] pdfData = createSamplePdfBytes("Student Study Notes on Databases",
+                "A relational database organizes data into one or more tables of columns and rows.",
+                "Normalization is the process of structuring a relational database in accordance with normal forms.",
+                "Primary keys are unique identifiers for each record in a database table.",
+                "Indexing improves the speed of data retrieval operations on a database table."
+        );
+        MockMultipartFile file = new MockMultipartFile("file", "student_db_notes_" + time + ".pdf", "application/pdf", pdfData);
+
+        ResponseEntity<?> uploadRes = pdfController.uploadPdf(file, s1Req);
+        assertEquals(HttpStatus.OK, uploadRes.getStatusCode(), "Student PDF upload must succeed");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) uploadRes.getBody();
+        assertNotNull(body);
+        assertTrue((Boolean) body.get("success"));
+        Long docId = (Long) body.get("documentId");
+        assertNotNull(docId);
+
+        // Verify document is owned by Student 1
+        PdfDocument doc = pdfDocumentRepository.findById(docId).orElseThrow();
+        assertEquals(s1Reg.getUsername(), doc.getUploadedBy().getUsername());
+        assertEquals(UserRole.STUDENT, doc.getUploadedBy().getRole());
+
+        // 3. Student 1 calls GET /api/pdf/my-materials
+        ResponseEntity<?> myMatsRes = pdfController.getMyMaterials(s1Req);
+        assertEquals(HttpStatus.OK, myMatsRes.getStatusCode());
+        @SuppressWarnings("unchecked")
+        List<PdfDocument> myMats = (List<PdfDocument>) myMatsRes.getBody();
+        assertNotNull(myMats);
+        assertTrue(myMats.stream().anyMatch(m -> docId.equals(m.getId())));
+
+        // Student 2 should NOT see Student 1's materials in their my-materials
+        ResponseEntity<?> s2MatsRes = pdfController.getMyMaterials(s2Req);
+        assertEquals(HttpStatus.OK, s2MatsRes.getStatusCode());
+        @SuppressWarnings("unchecked")
+        List<PdfDocument> s2Mats = (List<PdfDocument>) s2MatsRes.getBody();
+        assertNotNull(s2Mats);
+        assertFalse(s2Mats.stream().anyMatch(m -> docId.equals(m.getId())));
+
+        // 4. Questions generated for student material must be APPROVED immediately
+        List<GeneratedQuestion> questions = questionRepository.findByDocumentId(docId);
+        assertFalse(questions.isEmpty(), "Questions should have been generated for student study material");
+        for (GeneratedQuestion q : questions) {
+            assertEquals(ApprovalStatus.APPROVED, q.getApprovalStatus(), "Student questions must be APPROVED directly without teacher review");
+        }
+
+        // 5. Public question bank check: Ensure student's private questions do NOT leak into public bank
+        List<GeneratedQuestion> sharedQuestions = questionRepository.findSharedApprovedQuestions();
+        for (GeneratedQuestion q : sharedQuestions) {
+            assertNotEquals(docId, q.getDocument() != null ? q.getDocument().getId() : null, "Student private questions must not leak into shared public question bank");
+        }
+
+        // 6. Student 1 starts Word Search on this document
+        WordSearchInitResponse wsRes = wordSearchService.createWordSearchSession(docId, s1Reg.getUsername());
+        assertNotNull(wsRes);
+        assertNotNull(wsRes.getSessionToken());
+        assertTrue(wsRes.getTotalQuestions() > 0);
+
+        // 7. Student 1 starts Adaptive Quiz on this document
+        Map<String, Object> quizRes = adaptiveQuizService.startQuizSession(s1Reg.getUsername(), null, docId);
+        assertNotNull(quizRes);
+        assertNotNull(quizRes.get("sessionId"));
+        assertNotNull(quizRes.get("question"));
+
+        // 8. Privacy Check: Student 2 attempting to access Student 1's document or generate questions
+        ResponseEntity<?> s2GenRes = questionController.generateQuestions(docId, null, s2Req);
+        assertEquals(HttpStatus.FORBIDDEN, s2GenRes.getStatusCode(), "Student 2 must be forbidden from generating questions for Student 1's document");
+
+        ResponseEntity<?> s2DocQRes = questionController.getQuestionsByDocument(docId, s2Req);
+        assertEquals(HttpStatus.FORBIDDEN, s2DocQRes.getStatusCode(), "Student 2 must be forbidden from viewing Student 1's private questions");
     }
 }

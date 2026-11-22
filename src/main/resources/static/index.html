@@ -855,6 +855,10 @@ body {
             <span class="nav-icon">▦</span> Dashboard
         </div>
 
+        <div class="nav-link student-nav" id="nav-study-materials" onclick="switchView('study-materials-view', this)">
+            <span class="nav-icon">📁</span> My Study Materials
+        </div>
+
         <div class="nav-link student-nav" id="nav-puzzle" onclick="switchView('puzzle-view', this)">
             <span class="nav-icon">🔠</span> Word Search Puzzle
         </div>
@@ -938,6 +942,9 @@ body {
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                     <button class="primary-btn white-btn" onclick="startAdaptiveQuiz()">
                         Start Adaptive Quiz →
+                    </button>
+                    <button class="primary-btn" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4);" onclick="switchView('study-materials-view', document.getElementById('nav-study-materials'))">
+                        📁 My Study Materials
                     </button>
                     <button class="primary-btn" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4);" onclick="switchView('puzzle-view', document.getElementById('nav-puzzle'))">
                         Play Word Search 🔠
@@ -1065,7 +1072,60 @@ body {
             </div>
         </div>
 
-        <!-- 2. UPLOAD PDF VIEW -->
+        <!-- 1B. MY STUDY MATERIALS VIEW (STUDENT DASHBOARD) -->
+        <div id="study-materials-view" class="view-section">
+            <div class="panel" style="max-width: 900px; margin: 0 auto;">
+                <h3>My Study Materials</h3>
+                <p class="panel-subtitle">Upload your own educational notes, lecture slides, or textbook chapters to automatically generate private practice quizzes and interactive word searches.</p>
+
+                <div class="upload-box" id="studentDropZone" onclick="document.getElementById('studentPdfFileInput').click()">
+                    <p style="font-size: 36px; margin-bottom: 12px;">📁</p>
+                    <p style="font-weight: 600; color: #28599b; font-size: 15px;">Click to browse or drag & drop your study PDF here</p>
+                    <p style="font-size: 12px; color: #8590a4; margin-top: 6px;">Text-based PDF documents up to 25MB supported (Extracted privately via Apache PDFBox)</p>
+                    <p id="studentSelectedFileLabel" style="margin-top: 10px; font-weight: 600; color: #10b981; font-size: 13px; display:none;"></p>
+                    <input type="file" id="studentPdfFileInput" style="display: none;" accept=".pdf" onchange="onStudentFileSelected(event)">
+                </div>
+
+                <div style="margin-top: 15px; display: flex; gap: 10px; align-items: center; flex-wrap:wrap;">
+                    <button id="studentUploadBtn" class="primary-btn" onclick="uploadStudentPdfDocument()">
+                        <span id="studentUploadBtnSpinner" style="display:none;">⏳</span>
+                        <span id="studentUploadBtnText">Upload Study Material & Process →</span>
+                    </button>
+                    <button class="secondary-btn" onclick="clearStudentSelectedFile()">Clear</button>
+                </div>
+
+                <div id="studentUploadResultBox" style="margin-top: 20px; display:none;"></div>
+
+                <div class="section-heading" style="margin-top: 35px;">
+                    <div>
+                        <h3>Your Uploaded Study Materials</h3>
+                        <small>Private to your account — generate questions and practice quizzes or word searches</small>
+                    </div>
+                    <input type="text" id="studentDocSearchInput" placeholder="🔍 Search your materials..." oninput="filterStudentDocumentsTable()" class="filter-input" style="width:230px;">
+                </div>
+
+                <div class="table-responsive">
+                    <table class="custom-table" id="studentDocumentsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Study Material</th>
+                                <th>Size</th>
+                                <th>Sentences</th>
+                                <th>Questions</th>
+                                <th>Status</th>
+                                <th>Practice Options</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentDocumentsTableBody">
+                            <tr><td colspan="7" style="text-align:center; color:#94a3b8;">Loading your study materials...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. UPLOAD PDF VIEW (TEACHER DASHBOARD) -->
         <div id="upload-view" class="view-section">
             <div class="panel" style="max-width: 800px; margin: 0 auto;">
                 <h3>Upload Educational PDF</h3>
@@ -2287,6 +2347,7 @@ function switchView(viewId, element) {
 
     const titles = {
         'dashboard-view': ['Dashboard', 'Track your learning and improve your performance.'],
+        'study-materials-view': ['My Study Materials', 'Upload study materials to generate private practice quizzes and word searches.'],
         'upload-view': ['Upload PDF', 'Upload notes to generate questions and word searches.'],
         'review-view': ['Question Review', 'Teacher review and approval before student release.'],
         'puzzle-view': ['Word Search Puzzle', 'Search for key technical concepts extracted from notes.'],
@@ -2305,6 +2366,7 @@ function switchView(viewId, element) {
 
     // View-specific data triggers
     if (viewId === 'dashboard-view') { loadDashboardData(); checkActiveSessions(); }
+    if (viewId === 'study-materials-view') loadStudentUploadedDocuments();
     if (viewId === 'upload-view') loadUploadedDocuments();
     if (viewId === 'review-view') loadQuestionsForReview();
     if (viewId === 'puzzle-view') {
@@ -2535,6 +2597,190 @@ function filterActivityTable() {
 }
 
 // ==========================================
+// 1B. MY STUDY MATERIALS MODULE (STUDENTS)
+// ==========================================
+let selectedStudentPdfFile = null;
+let cachedStudentDocuments = [];
+
+function onStudentFileSelected(event) {
+    const file = event.target.files[0];
+    if (file) {
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            showMessage('Only PDF files are supported.', true);
+            return;
+        }
+        selectedStudentPdfFile = file;
+        const label = document.getElementById('studentSelectedFileLabel');
+        label.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        label.style.display = 'block';
+    }
+}
+
+function clearStudentSelectedFile() {
+    selectedStudentPdfFile = null;
+    const input = document.getElementById('studentPdfFileInput');
+    if (input) input.value = '';
+    const label = document.getElementById('studentSelectedFileLabel');
+    if (label) {
+        label.textContent = '';
+        label.style.display = 'none';
+    }
+    const resultBox = document.getElementById('studentUploadResultBox');
+    if (resultBox) resultBox.style.display = 'none';
+}
+
+async function uploadStudentPdfDocument() {
+    if (!selectedStudentPdfFile) {
+        showMessage('Please select an educational PDF study file first.', true);
+        return;
+    }
+
+    const uploadBtn = document.getElementById('studentUploadBtn');
+    const spinner = document.getElementById('studentUploadBtnSpinner');
+    const btnText = document.getElementById('studentUploadBtnText');
+    const resultBox = document.getElementById('studentUploadResultBox');
+
+    uploadBtn.disabled = true;
+    if (spinner) spinner.style.display = 'inline-block';
+    if (btnText) btnText.textContent = 'Processing PDF with Apache PDFBox...';
+    if (resultBox) resultBox.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedStudentPdfFile);
+
+    try {
+        const response = await authFetch('/api/pdf/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            resultBox.className = 'quiz-feedback-box feedback-correct';
+            resultBox.innerHTML = `
+                <strong>✓ Study Material Uploaded & Processed!</strong><br>
+                <strong>File:</strong> ${escapeHtml(data.filename)} (${Math.round((data.fileSize || 0) / 1024)} KB)<br>
+                <strong>Sentences Extracted:</strong> ${data.sentenceCount}<br>
+                <strong>Questions Automatically Generated:</strong> ${data.generatedQuestions}<br>
+                <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="primary-btn" onclick="startQuizForDoc(${data.documentId})">📝 Start Practice Quiz Now</button>
+                    <button class="secondary-btn" onclick="startWordSearchForDoc(${data.documentId})">🔠 Start Word Search</button>
+                </div>
+            `;
+            resultBox.style.display = 'block';
+            showMessage(`Processed ${data.generatedQuestions} new questions for "${data.filename}"!`);
+            clearStudentSelectedFile();
+            await loadStudentUploadedDocuments();
+        } else {
+            throw new Error(data.error || 'Failed to process PDF.');
+        }
+    } catch (err) {
+        resultBox.className = 'quiz-feedback-box feedback-wrong';
+        resultBox.innerHTML = `<strong>Error Processing PDF:</strong> ${escapeHtml(err.message)}`;
+        resultBox.style.display = 'block';
+    } finally {
+        uploadBtn.disabled = false;
+        if (spinner) spinner.style.display = 'none';
+        if (btnText) btnText.textContent = 'Upload Study Material & Process →';
+    }
+}
+
+async function loadStudentUploadedDocuments() {
+    try {
+        const res = await authFetch('/api/pdf/my-materials');
+        if (!res.ok) return;
+        cachedStudentDocuments = await res.json();
+        renderStudentDocumentsTable(cachedStudentDocuments);
+    } catch (e) {
+        console.error('Error loading student study materials:', e);
+    }
+}
+
+function renderStudentDocumentsTable(docs) {
+    const tbody = document.getElementById('studentDocumentsTableBody');
+    if (!tbody) return;
+
+    if (!docs || docs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#94a3b8; padding:20px;">No uploaded study materials yet. Select a PDF file above to get started!</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = docs.map(d => {
+        const qCount = d.generatedQuestionCount || 0;
+        return `
+        <tr>
+            <td>#${d.id}</td>
+            <td><strong>${escapeHtml(d.filename)}</strong></td>
+            <td>${Math.round((d.fileSize || 0) / 1024)} KB</td>
+            <td>${d.sentenceCount || 0}</td>
+            <td><span class="badge badge-strong">${qCount} questions</span></td>
+            <td><span class="status-pill pill-approved">${escapeHtml(d.status || 'PROCESSED')}</span></td>
+            <td>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    ${qCount > 0 ? `
+                        <button class="primary-btn" style="padding:4px 8px; font-size:11px;" onclick="startQuizForDoc(${d.id})">📝 Practice Quiz</button>
+                        <button class="secondary-btn" style="padding:4px 8px; font-size:11px;" onclick="startWordSearchForDoc(${d.id})">🔠 Word Search</button>
+                        <button class="secondary-btn" id="student-gen-btn-${d.id}" style="padding:4px 8px; font-size:11px;" onclick="generateQuestionsForStudentDoc(${d.id})">⚡ Regenerate</button>
+                    ` : `
+                        <button class="primary-btn" id="student-gen-btn-${d.id}" style="padding:4px 8px; font-size:11px;" onclick="generateQuestionsForStudentDoc(${d.id})">⚡ Generate Questions</button>
+                    `}
+                </div>
+            </td>
+        </tr>
+    `;
+    }).join('');
+}
+
+function filterStudentDocumentsTable() {
+    const q = (document.getElementById('studentDocSearchInput').value || '').toLowerCase();
+    if (!q) {
+        renderStudentDocumentsTable(cachedStudentDocuments);
+        return;
+    }
+    const filtered = cachedStudentDocuments.filter(d =>
+        (d.filename && d.filename.toLowerCase().includes(q)) ||
+        (d.status && d.status.toLowerCase().includes(q))
+    );
+    renderStudentDocumentsTable(filtered);
+}
+
+async function generateQuestionsForStudentDoc(docId) {
+    const btn = document.getElementById(`student-gen-btn-${docId}`);
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+    }
+    try {
+        const res = await authFetch(`/api/questions/generate/${docId}`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showMessage(`✓ Generated ${data.generatedCount} questions for "${data.filename}"!`);
+            await loadStudentUploadedDocuments();
+        } else {
+            showMessage(data.error || 'Failed to generate questions.', true);
+        }
+    } catch (e) {
+        showMessage(`Error generating questions: ${e.message}`, true);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '⚡ Generate Questions';
+        }
+    }
+}
+
+function startQuizForDoc(docId) {
+    switchView('adaptive-view', document.getElementById('nav-adaptive'));
+    startAdaptiveQuiz(docId);
+}
+
+function startWordSearchForDoc(docId) {
+    switchView('puzzle-view', document.getElementById('nav-puzzle'));
+    startWordSearchPuzzle(docId);
+}
+
+// ==========================================
 // 2. UPLOAD PDF MODULE (TEACHER ONLY)
 // ==========================================
 let selectedPdfFile = null;
@@ -2563,6 +2809,38 @@ function clearSelectedFile() {
 }
 
 // Drag & drop handlers
+const studentDropZone = document.getElementById('studentDropZone');
+if (studentDropZone) {
+    studentDropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        studentDropZone.style.borderColor = '#2862c4';
+        studentDropZone.style.background = '#f0f5fc';
+    });
+    studentDropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        studentDropZone.style.borderColor = '#b9cbe7';
+        studentDropZone.style.background = '#f8fafd';
+    });
+    studentDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        studentDropZone.style.borderColor = '#b9cbe7';
+        studentDropZone.style.background = '#f8fafd';
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                selectedStudentPdfFile = file;
+                const label = document.getElementById('studentSelectedFileLabel');
+                if (label) {
+                    label.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                    label.style.display = 'block';
+                }
+            } else {
+                showMessage('Only PDF files are supported.', true);
+            }
+        }
+    });
+}
+
 const dropZone = document.getElementById('dropZone');
 if (dropZone) {
     dropZone.addEventListener('dragover', (e) => {
@@ -2936,7 +3214,10 @@ async function saveEditedQuestion() {
 // ==========================================
 // 4. WORD SEARCH PUZZLE (QUESTION-BY-QUESTION)
 // ==========================================
-async function startWordSearchPuzzle() {
+async function startWordSearchPuzzle(docId) {
+    if (docId !== undefined) {
+        currentPuzzleState.documentId = docId;
+    }
     const gridEl = document.getElementById('wordGrid');
     const qTextEl = document.getElementById('puzzleQuestionText');
     const feedbackBox = document.getElementById('puzzleFeedbackBox');
@@ -2960,7 +3241,8 @@ async function startWordSearchPuzzle() {
 
     try {
         const student = currentUser ? currentUser.username : 'Student';
-        const res = await authFetch(`/api/wordsearch/generate?studentName=${encodeURIComponent(student)}`, { method: 'POST' });
+        const docParam = currentPuzzleState.documentId ? `/${currentPuzzleState.documentId}` : '';
+        const res = await authFetch(`/api/wordsearch/generate${docParam}?studentName=${encodeURIComponent(student)}`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to create puzzle session');
         const data = await res.json();
 
@@ -3282,7 +3564,10 @@ function stopPuzzleTimer() {
 // ==========================================
 // 5. ADAPTIVE QUIZ MODULE
 // ==========================================
-async function startAdaptiveQuiz() {
+async function startAdaptiveQuiz(docId) {
+    if (docId !== undefined) {
+        currentQuizSession.documentId = docId;
+    }
     const diffBadge = document.getElementById('quizDifficultyBadge');
     const topicBadge = document.getElementById('quizTopicBadge');
     const qText = document.getElementById('quizQuestionText');
@@ -3298,7 +3583,8 @@ async function startAdaptiveQuiz() {
 
     try {
         const student = currentUser ? currentUser.username : 'Student';
-        const res = await authFetch(`/api/quiz/start?studentName=${encodeURIComponent(student)}`, { method: 'POST' });
+        const docParam = currentQuizSession.documentId ? `/${currentQuizSession.documentId}` : '';
+        const res = await authFetch(`/api/quiz/start${docParam}?studentName=${encodeURIComponent(student)}`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to start quiz');
         const session = await res.json();
 

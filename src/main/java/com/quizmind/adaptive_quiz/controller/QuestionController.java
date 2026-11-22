@@ -54,16 +54,19 @@ public class QuestionController {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Document ID is required."));
         }
 
-        User user = authService.resolveUser(request);
-        if (user != null && user.getRole() != UserRole.TEACHER) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("success", false, "error", "Access denied: Only teachers can generate questions."));
-        }
-
         PdfDocument document = pdfDocumentRepository.findById(documentId).orElse(null);
         if (document == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("success", false, "error", "PDF Document with ID " + documentId + " was not found."));
+        }
+
+        User user = authService.resolveUser(request);
+        // Authorization: Teachers can generate for teacher-docs; Students can generate for their own study materials
+        if (user != null && user.getRole() == UserRole.STUDENT) {
+            if (document.getUploadedBy() == null || !document.getUploadedBy().getId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("success", false, "error", "Access denied: Students can only generate questions for their own uploaded study materials."));
+            }
         }
 
         try {
@@ -132,8 +135,25 @@ public class QuestionController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    public ResponseEntity<?> getQuestionsByDocument(Long documentId) {
+        return getQuestionsByDocument(documentId, null);
+    }
+
     @GetMapping("/document/{documentId}")
-    public ResponseEntity<List<QuestionDto>> getQuestionsByDocument(@PathVariable Long documentId) {
+    public ResponseEntity<?> getQuestionsByDocument(@PathVariable Long documentId, HttpServletRequest request) {
+        PdfDocument document = pdfDocumentRepository.findById(documentId).orElse(null);
+        if (document == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        User user = authService.resolveUser(request);
+        if (document.getUploadedBy() != null && document.getUploadedBy().getRole() == UserRole.STUDENT) {
+            if (user != null && user.getRole() == UserRole.STUDENT && !document.getUploadedBy().getId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Access denied: You cannot view questions from another student's private study material."));
+            }
+        }
+
         List<GeneratedQuestion> list = questionRepository.findByDocumentId(documentId);
         List<QuestionDto> dtos = list.stream().map(QuestionDto::new).toList();
         return ResponseEntity.ok(dtos);

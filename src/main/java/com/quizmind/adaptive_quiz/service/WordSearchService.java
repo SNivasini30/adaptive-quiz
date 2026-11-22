@@ -58,13 +58,23 @@ public class WordSearchService {
 
         if (documentId != null) {
             document = pdfDocumentRepository.findById(documentId).orElse(null);
-            candidateQuestions = questionRepository.findByDocumentIdAndApprovalStatus(documentId, ApprovalStatus.APPROVED);
+            if (document != null && document.getUploadedBy() != null && document.getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.STUDENT) {
+                if (studentName != null && !studentName.equalsIgnoreCase(document.getUploadedBy().getUsername())) {
+                    throw new IllegalArgumentException("Access denied: You cannot access another student's private study material.");
+                }
+                candidateQuestions = questionRepository.findByDocumentId(documentId);
+            } else {
+                candidateQuestions = questionRepository.findByDocumentIdAndApprovalStatus(documentId, ApprovalStatus.APPROVED);
+            }
         } else {
-            candidateQuestions = questionRepository.findByApprovalStatus(ApprovalStatus.APPROVED);
+            candidateQuestions = questionRepository.findSharedApprovedQuestions();
+            if (candidateQuestions.isEmpty()) {
+                candidateQuestions = questionRepository.findByApprovalStatus(ApprovalStatus.APPROVED);
+            }
         }
 
         if (candidateQuestions.isEmpty()) {
-            throw new IllegalArgumentException("No approved questions are available for this puzzle. A teacher must review and approve questions first.");
+            throw new IllegalArgumentException("No approved questions are available for this puzzle. Please generate or approve questions first.");
         }
 
         // Filter and select candidate questions with good single/multi-word concepts

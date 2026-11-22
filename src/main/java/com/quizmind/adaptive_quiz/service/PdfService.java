@@ -1,6 +1,8 @@
 package com.quizmind.adaptive_quiz.service;
 
 import com.quizmind.adaptive_quiz.model.PdfDocument;
+import com.quizmind.adaptive_quiz.model.User;
+import com.quizmind.adaptive_quiz.model.UserRole;
 import com.quizmind.adaptive_quiz.repository.PdfDocumentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,11 @@ public class PdfService {
 
     @Transactional
     public PdfDocument processPdf(MultipartFile file) throws IOException {
+        return processPdf(file, null);
+    }
+
+    @Transactional
+    public PdfDocument processPdf(MultipartFile file, User user) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Uploaded file is empty or missing.");
         }
@@ -61,7 +68,11 @@ public class PdfService {
                 preview,
                 "UPLOADED"
         );
+        pdfDoc.setSentenceCount(content.getSentences().size());
         pdfDoc.setExtractedText(content.getCleanedText());
+        if (user != null) {
+            pdfDoc.setUploadedBy(user);
+        }
         pdfDoc = pdfDocumentRepository.save(pdfDoc);
 
         // Deterministically generate questions from extracted sentences
@@ -74,6 +85,13 @@ public class PdfService {
 
     public List<PdfDocument> getAllDocuments() {
         return pdfDocumentRepository.findAllByOrderByUploadTimestampDesc();
+    }
+
+    public List<PdfDocument> getDocumentsForUser(User user) {
+        if (user == null || user.getRole() == UserRole.TEACHER) {
+            return pdfDocumentRepository.findAllByOrderByUploadTimestampDesc();
+        }
+        return pdfDocumentRepository.findByUploadedByIdOrderByUploadTimestampDesc(user.getId());
     }
 
     public PdfDocument getDocumentById(Long id) {

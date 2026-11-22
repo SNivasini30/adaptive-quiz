@@ -102,6 +102,10 @@ public class QuestionGenerationService {
         // 1. Concept candidate pool
         List<String> conceptPool = extractConceptPool(sentences);
 
+        ApprovalStatus initialStatus = (document != null && document.getUploadedBy() != null && document.getUploadedBy().getRole() == UserRole.STUDENT)
+                ? ApprovalStatus.APPROVED
+                : ApprovalStatus.PENDING;
+
         Set<String> seenQuestionTexts = new HashSet<>();
         List<GeneratedQuestion> generatedList = new ArrayList<>();
 
@@ -132,7 +136,7 @@ public class QuestionGenerationService {
                                 QuestionType.FILL_IN_BLANK,
                                 trimmedSentence,
                                 "Context: " + trimmedSentence,
-                                ApprovalStatus.PENDING
+                                initialStatus
                         );
                         blankQ.setDocument(document);
                         generatedList.add(blankQ);
@@ -152,7 +156,7 @@ public class QuestionGenerationService {
                                 QuestionType.DEFINITION,
                                 trimmedSentence,
                                 "Definition: " + trimmedSentence,
-                                ApprovalStatus.PENDING
+                                initialStatus
                         );
                         defQ.setDocument(document);
                         generatedList.add(defQ);
@@ -178,7 +182,7 @@ public class QuestionGenerationService {
                                 QuestionType.MCQ,
                                 trimmedSentence,
                                 "Source: " + trimmedSentence,
-                                ApprovalStatus.PENDING
+                                initialStatus
                         );
                         mcqQ.setDocument(document);
                         generatedList.add(mcqQ);
@@ -198,7 +202,7 @@ public class QuestionGenerationService {
                                 QuestionType.CONCEPT_IDENTIFICATION,
                                 trimmedSentence,
                                 "Identification: " + trimmedSentence,
-                                ApprovalStatus.PENDING
+                                initialStatus
                         );
                         cidQ.setDocument(document);
                         generatedList.add(cidQ);

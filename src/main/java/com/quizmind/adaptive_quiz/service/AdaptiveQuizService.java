@@ -128,30 +128,47 @@ public class AdaptiveQuizService {
 
         Difficulty targetDiff = progress.getCurrentDifficulty();
 
-        // 1. Try finding approved question for (topic, targetDiff)
+        // 1. If documentId is provided, enforce student privacy
+        if (documentId != null) {
+            PdfDocument doc = pdfDocumentRepository.findById(documentId).orElse(null);
+            if (doc != null && doc.getUploadedBy() != null && doc.getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.STUDENT) {
+                if (studentName != null && !studentName.equalsIgnoreCase(doc.getUploadedBy().getUsername())) {
+                    return null; // unauthorized access to another student's document
+                }
+            }
+        }
+
+        // 2. Try finding approved question for (topic, targetDiff)
         List<GeneratedQuestion> candidates = questionRepository.findByApprovalStatusAndTopicAndDifficulty(
                 ApprovalStatus.APPROVED, effectiveTopic, targetDiff
         );
         if (documentId != null) {
             candidates = candidates.stream().filter(q -> q.getDocument() != null && q.getDocument().getId().equals(documentId)).toList();
+        } else {
+            // Keep only shared questions
+            candidates = candidates.stream().filter(q -> q.getDocument() == null || q.getDocument().getUploadedBy() == null || q.getDocument().getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.TEACHER).toList();
         }
 
         GeneratedQuestion selected = selectUnattempted(candidates, attemptedIds);
 
-        // 2. Fallback: try any difficulty in this topic
+        // 3. Fallback: try any difficulty in this topic
         if (selected == null) {
             List<GeneratedQuestion> topicQuestions = questionRepository.findByApprovalStatusAndTopic(
                     ApprovalStatus.APPROVED, effectiveTopic
             );
             if (documentId != null) {
                 topicQuestions = topicQuestions.stream().filter(q -> q.getDocument() != null && q.getDocument().getId().equals(documentId)).toList();
+            } else {
+                topicQuestions = topicQuestions.stream().filter(q -> q.getDocument() == null || q.getDocument().getUploadedBy() == null || q.getDocument().getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.TEACHER).toList();
             }
             selected = selectUnattempted(topicQuestions, attemptedIds);
         }
 
-        // 3. Fallback: try any approved question across all topics
+        // 4. Fallback: try any approved question across all topics
         if (selected == null) {
-            List<GeneratedQuestion> allApproved = questionRepository.findByApprovalStatus(ApprovalStatus.APPROVED);
+            List<GeneratedQuestion> allApproved = (documentId != null)
+                    ? questionRepository.findByApprovalStatus(ApprovalStatus.APPROVED)
+                    : questionRepository.findSharedApprovedQuestions();
             if (documentId != null) {
                 allApproved = allApproved.stream().filter(q -> q.getDocument() != null && q.getDocument().getId().equals(documentId)).toList();
             }
