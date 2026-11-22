@@ -856,7 +856,7 @@ body {
         </div>
 
         <div class="nav-link student-nav" id="nav-study-materials" onclick="switchView('study-materials-view', this)">
-            <span class="nav-icon">📁</span> My Study Materials
+            <span class="nav-icon">📄</span> Upload PDF & Materials
         </div>
 
         <div class="nav-link student-nav" id="nav-puzzle" onclick="switchView('puzzle-view', this)">
@@ -878,7 +878,7 @@ body {
         <div class="nav-title" id="nav-teacher-title">TEACHER MENU</div>
 
         <div class="nav-link teacher-nav" id="nav-upload" onclick="switchView('upload-view', this)">
-            <span class="nav-icon">▤</span> Upload PDF
+            <span class="nav-icon">▤</span> Upload PDF (Teacher)
         </div>
 
         <div class="nav-link teacher-nav" id="nav-review" onclick="switchView('review-view', this)">
@@ -909,6 +909,9 @@ body {
             </div>
 
             <div class="profile" id="topbar-profile-container">
+                <button class="primary-btn" style="padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:5px; margin-right:6px; background:#2563eb; color:white;" onclick="goToUploadPdf()">
+                    <span>📤</span> Upload PDF
+                </button>
                 <div class="avatar" id="topbar-avatar" onclick="openProfileModal()" style="cursor:pointer;" title="View Profile">S</div>
                 <div style="cursor:pointer;" onclick="openProfileModal()">
                     <div style="display:flex; align-items:center; gap:6px;">
@@ -938,13 +941,13 @@ body {
 
             <section class="welcome">
                 <h2 id="welcome-heading">Welcome back, Student! 👋</h2>
-                <p>Every question is an opportunity to improve. Upload notes to generate questions, solve adaptive quizzes, or challenge yourself with the interactive word search puzzle.</p>
+                <p>Upload educational PDFs to automatically generate questions, practice adaptive quizzes, or challenge yourself with the interactive word search puzzle.</p>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button class="primary-btn" style="background:#2563eb; font-weight:700; box-shadow: 0 4px 12px rgba(37,99,235,0.35); display:inline-flex; align-items:center; gap:6px;" onclick="goToUploadPdf()">
+                        <span>📤</span> Upload PDF & Generate Questions
+                    </button>
                     <button class="primary-btn white-btn" onclick="startAdaptiveQuiz()">
                         Start Adaptive Quiz →
-                    </button>
-                    <button class="primary-btn" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4);" onclick="switchView('study-materials-view', document.getElementById('nav-study-materials'))">
-                        📁 My Study Materials
                     </button>
                     <button class="primary-btn" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4);" onclick="switchView('puzzle-view', document.getElementById('nav-puzzle'))">
                         Play Word Search 🔠
@@ -954,6 +957,23 @@ body {
                     </button>
                 </div>
             </section>
+
+            <!-- QUICK UPLOAD PDF ACTION CARD ON DASHBOARD -->
+            <div class="panel" style="margin-bottom: 25px; border: 2px dashed #93c5fd; background: #f0f7ff; padding: 18px 22px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div style="max-width: 650px;">
+                        <h3 style="color:#1e40af; font-size:16px; margin-bottom:4px; display:flex; align-items:center; gap:8px;">
+                            <span>📄</span> Upload PDF to Generate Quiz & Word Search Questions
+                        </h3>
+                        <p style="color:#475569; font-size:13px; margin:0; line-height: 1.5;">
+                            Upload your educational notes, slides, or syllabus PDFs. Apache PDFBox extracts concepts and generates questions that immediately appear in both <strong>Normal/Adaptive Quiz</strong> and <strong>Word Search Puzzles</strong>.
+                        </p>
+                    </div>
+                    <button class="primary-btn" style="font-weight:700; font-size:13px; padding:9px 18px; display:inline-flex; align-items:center; gap:6px;" onclick="goToUploadPdf()">
+                        <span>📤</span> Upload PDF Now →
+                    </button>
+                </div>
+            </div>
 
             <div class="section-heading">
                 <h3>Performance Overview</h3>
@@ -1075,7 +1095,7 @@ body {
         <!-- 1B. MY STUDY MATERIALS VIEW (STUDENT DASHBOARD) -->
         <div id="study-materials-view" class="view-section">
             <div class="panel" style="max-width: 900px; margin: 0 auto;">
-                <h3>My Study Materials</h3>
+                <h3>Upload PDF & Study Materials</h3>
                 <p class="panel-subtitle">Upload your own educational notes, lecture slides, or textbook chapters to automatically generate private practice quizzes and interactive word searches.</p>
 
                 <div class="upload-box" id="studentDropZone" onclick="document.getElementById('studentPdfFileInput').click()">
@@ -1222,6 +1242,9 @@ body {
                     <select id="puzzleDocSelect" class="filter-input" style="width:260px; font-weight:600; padding:6px 10px;" onchange="onPuzzleDocSelectChange(this.value)">
                         <option value="">🌐 All Shared Course Materials</option>
                     </select>
+                    <button class="primary-btn" style="padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:5px;" onclick="goToUploadPdf()">
+                        <span>📤</span> Upload New PDF
+                    </button>
                     <button class="secondary-btn" onclick="startWordSearchPuzzle()">↺ New Puzzle Session</button>
                 </div>
             </div>
@@ -1345,6 +1368,9 @@ body {
                     <select id="adaptiveDocSelect" class="filter-input" style="width:260px; font-weight:600; padding:6px 10px;" onchange="onAdaptiveDocSelectChange(this.value)">
                         <option value="">🌐 All Shared Course Materials</option>
                     </select>
+                    <button class="primary-btn" style="padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; gap:5px;" onclick="goToUploadPdf()">
+                        <span>📤</span> Upload New PDF
+                    </button>
                     <button class="secondary-btn" onclick="startAdaptiveQuiz()">↺ New Quiz Session</button>
                 </div>
             </div>
@@ -2338,6 +2364,14 @@ async function downloadPerformanceReportPdf() {
 // ==========================================
 // NAVIGATION & VIEW SWITCHER
 // ==========================================
+function goToUploadPdf() {
+    if (currentUser && currentUser.role === 'TEACHER') {
+        switchView('upload-view', document.getElementById('nav-upload'));
+    } else {
+        switchView('study-materials-view', document.getElementById('nav-study-materials'));
+    }
+}
+
 function switchView(viewId, element) {
     // Role protection on client side
     if (currentUser && currentUser.role === 'STUDENT') {
@@ -2356,8 +2390,8 @@ function switchView(viewId, element) {
 
     const titles = {
         'dashboard-view': ['Dashboard', 'Track your learning and improve your performance.'],
-        'study-materials-view': ['My Study Materials', 'Upload study materials to generate private practice quizzes and word searches.'],
-        'upload-view': ['Upload PDF', 'Upload notes to generate questions and word searches.'],
+        'study-materials-view': ['Upload PDF & Study Materials', 'Upload study materials to automatically generate private practice quizzes and interactive word searches.'],
+        'upload-view': ['Upload Educational PDF', 'Upload notes to generate questions and word searches.'],
         'review-view': ['Question Review', 'Teacher review and approval before student release.'],
         'puzzle-view': ['Word Search Puzzle', 'Search for key technical concepts extracted from notes.'],
         'adaptive-view': ['Adaptive Quiz', 'Dynamic difficulty scaling based on your responses.'],
@@ -3773,7 +3807,7 @@ async function startAdaptiveQuiz(docId) {
         startQuizTimer();
 
     } catch (e) {
-        qText.textContent = 'Could not load quiz questions. Please make sure questions exist and are approved.';
+        qText.textContent = 'Could not load quiz questions. Please make sure this document has generated questions.';
     }
 }
 

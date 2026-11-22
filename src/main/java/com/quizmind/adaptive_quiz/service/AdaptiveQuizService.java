@@ -117,10 +117,12 @@ public class AdaptiveQuizService {
             }
 
             List<GeneratedQuestion> docQuestions = questionRepository.findByDocumentId(effectiveDocId);
-            if (doc.getUploadedBy() == null || doc.getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.TEACHER) {
-                docQuestions = docQuestions.stream().filter(q -> q.getApprovalStatus() == ApprovalStatus.APPROVED).toList();
-            } else {
-                docQuestions = docQuestions.stream().filter(q -> q.getApprovalStatus() == ApprovalStatus.APPROVED || q.getApprovalStatus() == ApprovalStatus.GENERATED).toList();
+            // All questions from the document are playable immediately without requiring approval
+            docQuestions = docQuestions.stream()
+                    .filter(q -> q.getApprovalStatus() != ApprovalStatus.REJECTED)
+                    .toList();
+            if (docQuestions.isEmpty()) {
+                docQuestions = questionRepository.findByDocumentId(effectiveDocId);
             }
 
             List<GeneratedQuestion> unattempted = docQuestions.stream().filter(q -> !attemptedIds.contains(q.getId())).toList();

@@ -62,9 +62,13 @@ public class WordSearchService {
                 if (studentName != null && !studentName.equalsIgnoreCase(document.getUploadedBy().getUsername())) {
                     throw new IllegalArgumentException("Access denied: You cannot access another student's private study material.");
                 }
+            }
+            // All questions from the document are playable without requiring approval
+            candidateQuestions = questionRepository.findByDocumentId(documentId).stream()
+                    .filter(q -> q.getApprovalStatus() != ApprovalStatus.REJECTED)
+                    .toList();
+            if (candidateQuestions.isEmpty()) {
                 candidateQuestions = questionRepository.findByDocumentId(documentId);
-            } else {
-                candidateQuestions = questionRepository.findByDocumentIdAndApprovalStatus(documentId, ApprovalStatus.APPROVED);
             }
         } else {
             candidateQuestions = questionRepository.findSharedApprovedQuestions();
@@ -74,7 +78,7 @@ public class WordSearchService {
         }
 
         if (candidateQuestions.isEmpty()) {
-            throw new IllegalArgumentException("No approved questions are available for this puzzle. Please generate or approve questions first.");
+            throw new IllegalArgumentException("No questions are currently available for this study material. Please upload a PDF or generate questions first.");
         }
 
         // Filter and select candidate questions with good single/multi-word concepts

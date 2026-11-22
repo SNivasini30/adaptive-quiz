@@ -48,6 +48,10 @@ public class DataInitializerService implements CommandLineRunner {
         try {
             jdbcTemplate.execute("ALTER TABLE questions ALTER COLUMN question_type VARCHAR(32)");
         } catch (Exception ignored) {}
+        try {
+            // Ensure all previously generated or pending questions are approved immediately
+            jdbcTemplate.execute("UPDATE questions SET approval_status = 'APPROVED' WHERE approval_status != 'APPROVED'");
+        } catch (Exception ignored) {}
         // 1. Seed Teacher Account
         User teacher = userRepository.findByUsernameIgnoreCase("teacher").orElse(null);
         if (teacher == null) {

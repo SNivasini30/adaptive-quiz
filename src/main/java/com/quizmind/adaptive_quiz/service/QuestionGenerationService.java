@@ -102,9 +102,8 @@ public class QuestionGenerationService {
         // 1. Concept candidate pool
         List<String> conceptPool = extractConceptPool(sentences);
 
-        ApprovalStatus initialStatus = (document != null && document.getUploadedBy() != null && document.getUploadedBy().getRole() == UserRole.STUDENT)
-                ? ApprovalStatus.APPROVED
-                : ApprovalStatus.PENDING;
+        // Questions generated from any uploaded PDF are directly approved for immediate play
+        ApprovalStatus initialStatus = ApprovalStatus.APPROVED;
 
         Set<String> seenQuestionTexts = new HashSet<>();
         List<GeneratedQuestion> generatedList = new ArrayList<>();

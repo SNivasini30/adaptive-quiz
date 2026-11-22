@@ -43,7 +43,7 @@ public class GeneratedQuestion {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32, columnDefinition = "VARCHAR(32)")
-    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
+    private ApprovalStatus approvalStatus = ApprovalStatus.APPROVED;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "document_id")
@@ -53,7 +53,7 @@ public class GeneratedQuestion {
 
     public GeneratedQuestion() {
         this.createdAt = LocalDateTime.now();
-        this.approvalStatus = ApprovalStatus.GENERATED;
+        this.approvalStatus = ApprovalStatus.APPROVED;
     }
 
     public GeneratedQuestion(String questionText, String correctAnswer, List<String> options,
@@ -70,7 +70,7 @@ public class GeneratedQuestion {
         this.questionType = questionType;
         this.sourceSentence = sourceSentence;
         this.explanation = explanation;
-        this.approvalStatus = approvalStatus != null ? approvalStatus : ApprovalStatus.GENERATED;
+        this.approvalStatus = approvalStatus != null ? approvalStatus : ApprovalStatus.APPROVED;
     }
 
     public Long getId() {
