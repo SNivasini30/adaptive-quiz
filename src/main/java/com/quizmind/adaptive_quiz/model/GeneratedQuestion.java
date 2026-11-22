@@ -45,7 +45,7 @@ public class GeneratedQuestion {
     @Column(nullable = false, length = 32, columnDefinition = "VARCHAR(32)")
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "document_id")
     private PdfDocument document;
 

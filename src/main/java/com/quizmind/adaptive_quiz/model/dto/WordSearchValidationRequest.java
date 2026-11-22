@@ -6,6 +6,11 @@ public class WordSearchValidationRequest {
 
     private Long puzzleId;
     private String sessionToken;
+    private Long questionId;
+    private Integer startRow;
+    private Integer startCol;
+    private Integer endRow;
+    private Integer endCol;
     private String selectedWord;
     private List<CoordinateDto> coordinates;
 
@@ -25,6 +30,46 @@ public class WordSearchValidationRequest {
 
     public void setSessionToken(String sessionToken) {
         this.sessionToken = sessionToken;
+    }
+
+    public Long getQuestionId() {
+        return questionId;
+    }
+
+    public void setQuestionId(Long questionId) {
+        this.questionId = questionId;
+    }
+
+    public Integer getStartRow() {
+        return startRow;
+    }
+
+    public void setStartRow(Integer startRow) {
+        this.startRow = startRow;
+    }
+
+    public Integer getStartCol() {
+        return startCol;
+    }
+
+    public void setStartCol(Integer startCol) {
+        this.startCol = startCol;
+    }
+
+    public Integer getEndRow() {
+        return endRow;
+    }
+
+    public void setEndRow(Integer endRow) {
+        this.endRow = endRow;
+    }
+
+    public Integer getEndCol() {
+        return endCol;
+    }
+
+    public void setEndCol(Integer endCol) {
+        this.endCol = endCol;
     }
 
     public String getSelectedWord() {

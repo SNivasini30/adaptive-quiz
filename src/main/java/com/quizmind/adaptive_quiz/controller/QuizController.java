@@ -23,14 +23,17 @@ public class QuizController {
     private final AdaptiveQuizService adaptiveQuizService;
     private final QuestionRepository questionRepository;
     private final AuthService authService;
+    private final com.quizmind.adaptive_quiz.repository.QuizSessionRepository quizSessionRepository;
 
     @Autowired
     public QuizController(AdaptiveQuizService adaptiveQuizService,
                           QuestionRepository questionRepository,
-                          AuthService authService) {
+                          AuthService authService,
+                          com.quizmind.adaptive_quiz.repository.QuizSessionRepository quizSessionRepository) {
         this.adaptiveQuizService = adaptiveQuizService;
         this.questionRepository = questionRepository;
         this.authService = authService;
+        this.quizSessionRepository = quizSessionRepository;
     }
 
     @PostMapping(value = {"/api/quiz/start", "/api/quiz/start/{documentId}"})
@@ -75,7 +78,14 @@ public class QuizController {
         String effectiveSessionId = pathSessionId != null ? pathSessionId : paramSessionId;
         User user = authService.resolveUser(request);
         String effectiveStudent = (user != null) ? user.getUsername() : studentName;
-        QuestionDto nextQ = adaptiveQuizService.getNextAdaptiveQuestion(effectiveStudent, topic, effectiveSessionId);
+        Long docId = null;
+        if (effectiveSessionId != null) {
+            com.quizmind.adaptive_quiz.model.QuizSession qs = quizSessionRepository.findBySessionId(effectiveSessionId).orElse(null);
+            if (qs != null && qs.getDocument() != null) {
+                docId = qs.getDocument().getId();
+            }
+        }
+        QuestionDto nextQ = adaptiveQuizService.getNextAdaptiveQuestion(effectiveStudent, topic, effectiveSessionId, docId);
         if (nextQ == null) {
             return ResponseEntity.ok(Map.of("completed", true, "message", "All questions in this session have been completed!"));
         }

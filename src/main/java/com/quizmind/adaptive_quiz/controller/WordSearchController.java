@@ -48,11 +48,13 @@ public class WordSearchController {
     @PostMapping(value = {"/api/wordsearch/{id}/validate", "/api/wordsearch/validate"})
     public ResponseEntity<WordSearchValidationResponse> validateWord(
             @PathVariable(value = "id", required = false) Long id,
-            @RequestBody WordSearchValidationRequest request) {
+            @RequestBody WordSearchValidationRequest request,
+            HttpServletRequest httpRequest) {
         if (id != null && request.getPuzzleId() == null) {
             request.setPuzzleId(id);
         }
-        WordSearchValidationResponse response = wordSearchService.validateWordSelection(request);
+        User user = authService.resolveUser(httpRequest);
+        WordSearchValidationResponse response = wordSearchService.validateWordSelection(request, user);
         return ResponseEntity.ok(response);
     }
 

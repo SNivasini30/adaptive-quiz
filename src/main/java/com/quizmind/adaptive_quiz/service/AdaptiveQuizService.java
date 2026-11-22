@@ -79,11 +79,21 @@ public class AdaptiveQuizService {
         return response;
     }
 
+    @Transactional(readOnly = true)
     public QuestionDto getNextAdaptiveQuestion(String studentName, String topic, String sessionId) {
         return getNextAdaptiveQuestion(studentName, topic, sessionId, null);
     }
 
+    @Transactional(readOnly = true)
     public QuestionDto getNextAdaptiveQuestion(String studentName, String topic, String sessionId, Long documentId) {
+        Long effectiveDocId = documentId;
+        if (effectiveDocId == null && sessionId != null) {
+            Optional<QuizSession> optSession = quizSessionRepository.findBySessionId(sessionId);
+            if (optSession.isPresent() && optSession.get().getDocument() != null) {
+                effectiveDocId = optSession.get().getDocument().getId();
+            }
+        }
+
         Set<Long> attemptedIds = new HashSet<>();
         if (sessionId != null) {
             List<QuizAttempt> sessionAttempts = quizAttemptRepository.findBySessionId(sessionId);
@@ -94,7 +104,49 @@ public class AdaptiveQuizService {
             }
         }
 
-        // Determine target topic
+        // A. If effectiveDocId is specified, serve questions exclusively from that specific document
+        if (effectiveDocId != null) {
+            PdfDocument doc = pdfDocumentRepository.findById(effectiveDocId).orElse(null);
+            if (doc == null) {
+                return null;
+            }
+            if (doc.getUploadedBy() != null && doc.getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.STUDENT) {
+                if (studentName != null && !studentName.equalsIgnoreCase(doc.getUploadedBy().getUsername())) {
+                    return null; // unauthorized access to another student's document
+                }
+            }
+
+            List<GeneratedQuestion> docQuestions = questionRepository.findByDocumentId(effectiveDocId);
+            if (doc.getUploadedBy() == null || doc.getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.TEACHER) {
+                docQuestions = docQuestions.stream().filter(q -> q.getApprovalStatus() == ApprovalStatus.APPROVED).toList();
+            } else {
+                docQuestions = docQuestions.stream().filter(q -> q.getApprovalStatus() == ApprovalStatus.APPROVED || q.getApprovalStatus() == ApprovalStatus.GENERATED).toList();
+            }
+
+            List<GeneratedQuestion> unattempted = docQuestions.stream().filter(q -> !attemptedIds.contains(q.getId())).toList();
+            if (unattempted.isEmpty()) {
+                return null; // All questions from this document have been attempted
+            }
+
+            String docTopic = !unattempted.isEmpty() ? unattempted.get(0).getTopic() : "General";
+            User user = (studentName != null) ? userRepository.findByUsernameIgnoreCase(studentName.trim()).orElse(null) : null;
+            StudentTopicProgress progress;
+            if (user != null) {
+                progress = progressRepository.findByUserIdAndTopic(user.getId(), docTopic)
+                        .orElseGet(() -> progressRepository.save(new StudentTopicProgress(user, docTopic)));
+            } else {
+                progress = progressRepository.findByStudentNameAndTopic(studentName, docTopic)
+                        .orElseGet(() -> progressRepository.save(new StudentTopicProgress(studentName, docTopic)));
+            }
+            Difficulty targetDiff = progress.getCurrentDifficulty();
+
+            GeneratedQuestion selected = unattempted.stream().filter(q -> q.getDifficulty() == targetDiff).findFirst()
+                    .orElse(unattempted.get(0));
+
+            return new QuestionDto(selected);
+        }
+
+        // B. Global / Shared Question Pool (documentId == null)
         String effectiveTopic = topic;
         if (effectiveTopic == null || effectiveTopic.trim().isEmpty() || effectiveTopic.equalsIgnoreCase("ALL")) {
             List<String> topics = questionRepository.findDistinctApprovedTopics();
@@ -128,26 +180,11 @@ public class AdaptiveQuizService {
 
         Difficulty targetDiff = progress.getCurrentDifficulty();
 
-        // 1. If documentId is provided, enforce student privacy
-        if (documentId != null) {
-            PdfDocument doc = pdfDocumentRepository.findById(documentId).orElse(null);
-            if (doc != null && doc.getUploadedBy() != null && doc.getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.STUDENT) {
-                if (studentName != null && !studentName.equalsIgnoreCase(doc.getUploadedBy().getUsername())) {
-                    return null; // unauthorized access to another student's document
-                }
-            }
-        }
-
         // 2. Try finding approved question for (topic, targetDiff)
         List<GeneratedQuestion> candidates = questionRepository.findByApprovalStatusAndTopicAndDifficulty(
                 ApprovalStatus.APPROVED, effectiveTopic, targetDiff
         );
-        if (documentId != null) {
-            candidates = candidates.stream().filter(q -> q.getDocument() != null && q.getDocument().getId().equals(documentId)).toList();
-        } else {
-            // Keep only shared questions
-            candidates = candidates.stream().filter(q -> q.getDocument() == null || q.getDocument().getUploadedBy() == null || q.getDocument().getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.TEACHER).toList();
-        }
+        candidates = candidates.stream().filter(q -> q.getDocument() == null || q.getDocument().getUploadedBy() == null || q.getDocument().getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.TEACHER).toList();
 
         GeneratedQuestion selected = selectUnattempted(candidates, attemptedIds);
 
@@ -156,22 +193,13 @@ public class AdaptiveQuizService {
             List<GeneratedQuestion> topicQuestions = questionRepository.findByApprovalStatusAndTopic(
                     ApprovalStatus.APPROVED, effectiveTopic
             );
-            if (documentId != null) {
-                topicQuestions = topicQuestions.stream().filter(q -> q.getDocument() != null && q.getDocument().getId().equals(documentId)).toList();
-            } else {
-                topicQuestions = topicQuestions.stream().filter(q -> q.getDocument() == null || q.getDocument().getUploadedBy() == null || q.getDocument().getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.TEACHER).toList();
-            }
+            topicQuestions = topicQuestions.stream().filter(q -> q.getDocument() == null || q.getDocument().getUploadedBy() == null || q.getDocument().getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.TEACHER).toList();
             selected = selectUnattempted(topicQuestions, attemptedIds);
         }
 
         // 4. Fallback: try any approved question across all topics
         if (selected == null) {
-            List<GeneratedQuestion> allApproved = (documentId != null)
-                    ? questionRepository.findByApprovalStatus(ApprovalStatus.APPROVED)
-                    : questionRepository.findSharedApprovedQuestions();
-            if (documentId != null) {
-                allApproved = allApproved.stream().filter(q -> q.getDocument() != null && q.getDocument().getId().equals(documentId)).toList();
-            }
+            List<GeneratedQuestion> allApproved = questionRepository.findSharedApprovedQuestions();
             selected = selectUnattempted(allApproved, attemptedIds);
         }
 
@@ -348,8 +376,15 @@ public class AdaptiveQuizService {
             feedback.setConfidenceBoost(true);
         }
 
-        // Fetch Next Adaptive Question
-        QuestionDto nextQ = getNextAdaptiveQuestion(studentName, question.getTopic(), submission.getSessionId());
+        // Fetch Next Adaptive Question (preserving documentId if session is tied to a specific study material)
+        Long docId = null;
+        if (submission.getSessionId() != null) {
+            QuizSession quizSess = quizSessionRepository.findBySessionId(submission.getSessionId()).orElse(null);
+            if (quizSess != null && quizSess.getDocument() != null) {
+                docId = quizSess.getDocument().getId();
+            }
+        }
+        QuestionDto nextQ = getNextAdaptiveQuestion(studentName, question.getTopic(), submission.getSessionId(), docId);
         feedback.setNextQuestion(nextQ);
         feedback.setQuizCompleted(nextQ == null);
 

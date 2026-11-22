@@ -88,7 +88,10 @@ public class WordSearchService {
         }
 
         if (chosenQuestions.isEmpty()) {
-            // Seed a fallback question if database has no valid concepts
+            if (documentId != null) {
+                throw new IllegalArgumentException("The selected study material has no questions suitable for Word Search (answers must be 3-16 alphabetic characters). You can practice all of these questions in the Normal Quiz!");
+            }
+            // Seed a fallback question if database has no valid concepts (only for default shared course materials)
             GeneratedQuestion fallback = new GeneratedQuestion(
                     "What is the system software that manages computer hardware and software resources?",
                     "Operating System",
@@ -178,6 +181,11 @@ public class WordSearchService {
      */
     @Transactional
     public WordSearchValidationResponse validateWordSelection(WordSearchValidationRequest request) {
+        return validateWordSelection(request, null);
+    }
+
+    @Transactional
+    public WordSearchValidationResponse validateWordSelection(WordSearchValidationRequest request, User user) {
         WordSearchValidationResponse response = new WordSearchValidationResponse();
 
         WordSearchAttempt attempt = null;
@@ -188,7 +196,11 @@ public class WordSearchService {
             WordSearchPuzzle p = puzzleRepository.findById(request.getPuzzleId()).orElse(null);
             if (p != null) {
                 // Recover or create attempt
-                attempt = new WordSearchAttempt(p, "Student", UUID.randomUUID().toString(), p.getPlacements().size());
+                String studentName = (user != null) ? user.getUsername() : "Student";
+                attempt = new WordSearchAttempt(p, studentName, UUID.randomUUID().toString(), p.getPlacements().size());
+                if (user != null) {
+                    attempt.setUser(user);
+                }
                 attempt = attemptRepository.save(attempt);
             }
         }
@@ -197,6 +209,15 @@ public class WordSearchService {
             response.setCorrect(false);
             response.setMessage("Puzzle session not found. Please regenerate or start a new puzzle.");
             return response;
+        }
+
+        // Verify session ownership if authenticated
+        if (user != null && attempt.getUser() != null) {
+            if (!attempt.getUser().getId().equals(user.getId())) {
+                response.setCorrect(false);
+                response.setMessage("Access denied: You do not own this puzzle session.");
+                return response;
+            }
         }
 
         WordSearchPuzzle puzzle = attempt.getPuzzle();
@@ -216,12 +237,27 @@ public class WordSearchService {
 
         WordPlacement targetPlacement = placements.get(currentIndex);
         String expectedWord = targetPlacement.getWord();
-        String selectedRaw = request.getSelectedWord();
-        String selectedSanitized = sanitizeWord(selectedRaw);
 
-        // Validate Coordinates against the grid if provided
+        // Verify question ID if provided by client
+        if (request.getQuestionId() != null && targetPlacement.getQuestion() != null) {
+            if (!request.getQuestionId().equals(targetPlacement.getQuestion().getId())) {
+                response.setCorrect(false);
+                response.setMessage("Selection does not correspond to the current active question.");
+                return response;
+            }
+        }
+
         char[][] grid = puzzle.toGridArray();
         List<CoordinateDto> coords = request.getCoordinates();
+
+        // Reconstruct coordinates from startRow/Col and endRow/Col if coords was omitted
+        if ((coords == null || coords.isEmpty()) && request.getStartRow() != null && request.getStartCol() != null
+                && request.getEndRow() != null && request.getEndCol() != null) {
+            coords = buildStraightLineCoords(request.getStartRow(), request.getStartCol(), request.getEndRow(), request.getEndCol(), grid.length);
+        }
+
+        String selectedSanitized = sanitizeWord(request.getSelectedWord());
+
         if (coords != null && coords.size() >= 2) {
             boolean straightLine = validateStraightLine(coords, grid.length);
             if (!straightLine) {
@@ -239,13 +275,12 @@ public class WordSearchService {
                     spelled.append(grid[c.getRow()][c.getCol()]);
                 }
             }
-            if (selectedSanitized.isEmpty()) {
-                selectedSanitized = spelled.toString();
-            }
+            selectedSanitized = spelled.toString();
         }
 
-        // Compare with current question's expected answer
-        boolean isMatch = selectedSanitized.equals(expectedWord);
+        // Compare with current question's expected answer (forward or reverse straight line)
+        boolean isMatch = selectedSanitized.equals(expectedWord)
+                || new StringBuilder(selectedSanitized).reverse().toString().equals(expectedWord);
 
         if (isMatch) {
             // Correct Answer!
@@ -553,6 +588,34 @@ public class WordSearchService {
             }
         }
         return true;
+    }
+
+    private List<CoordinateDto> buildStraightLineCoords(int r1, int c1, int r2, int c2, int gridSize) {
+        int dr = r2 - r1;
+        int dc = c2 - c1;
+        int absR = Math.abs(dr);
+        int absC = Math.abs(dc);
+
+        if (absR != 0 && absC != 0 && absR != absC) {
+            return Collections.emptyList();
+        }
+
+        int stepR = Integer.compare(dr, 0);
+        int stepC = Integer.compare(dc, 0);
+        int steps = Math.max(absR, absC);
+
+        List<CoordinateDto> list = new ArrayList<>();
+        int curR = r1;
+        int curC = c1;
+        for (int i = 0; i <= steps; i++) {
+            if (curR < 0 || curR >= gridSize || curC < 0 || curC >= gridSize) {
+                return Collections.emptyList();
+            }
+            list.add(new CoordinateDto(curR, curC));
+            curR += stepR;
+            curC += stepC;
+        }
+        return list;
     }
 
     private String sanitizeWord(String answer) {

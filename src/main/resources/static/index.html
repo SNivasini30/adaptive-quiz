@@ -1217,7 +1217,11 @@ body {
                     <h3>Interactive Question-by-Question Word Search Puzzle</h3>
                     <small>Discover the answer to each question by finding the hidden concept in the letter grid. Answers are never revealed in advance.</small>
                 </div>
-                <div style="display:flex; gap:10px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <label style="font-size:13px; font-weight:600; color:#475569;">Study Material:</label>
+                    <select id="puzzleDocSelect" class="filter-input" style="width:260px; font-weight:600; padding:6px 10px;" onchange="onPuzzleDocSelectChange(this.value)">
+                        <option value="">🌐 All Shared Course Materials</option>
+                    </select>
                     <button class="secondary-btn" onclick="startWordSearchPuzzle()">↺ New Puzzle Session</button>
                 </div>
             </div>
@@ -1336,7 +1340,11 @@ body {
                     <h3>Smart Adaptive Quiz</h3>
                     <small>Difficulty dynamically adjusts based on 3-correct-streak or 2-incorrect-error rules</small>
                 </div>
-                <div style="display:flex; gap:10px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <label style="font-size:13px; font-weight:600; color:#475569;">Study Material:</label>
+                    <select id="adaptiveDocSelect" class="filter-input" style="width:260px; font-weight:600; padding:6px 10px;" onchange="onAdaptiveDocSelectChange(this.value)">
+                        <option value="">🌐 All Shared Course Materials</option>
+                    </select>
                     <button class="secondary-btn" onclick="startAdaptiveQuiz()">↺ New Quiz Session</button>
                 </div>
             </div>
@@ -1344,8 +1352,9 @@ body {
             <div style="max-width: 760px; margin: 0 auto;">
                 <div class="quiz-card">
                     <!-- Quiz Header with Difficulty Badge and Timer -->
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:8px;">
                         <div style="display:flex; gap:8px; align-items:center;">
+                            <span id="quizQuestionNumBadge" class="status-pill pill-medium" style="display:none;">Question 1</span>
                             <span id="quizDifficultyBadge" class="status-pill pill-easy">Difficulty: EASY</span>
                             <span id="quizTopicBadge" class="status-pill badge-neutral">Topic: General</span>
                         </div>
@@ -2692,9 +2701,61 @@ async function loadStudentUploadedDocuments() {
         if (!res.ok) return;
         cachedStudentDocuments = await res.json();
         renderStudentDocumentsTable(cachedStudentDocuments);
+        populateDocumentSelectors(cachedStudentDocuments);
     } catch (e) {
         console.error('Error loading student study materials:', e);
     }
+}
+
+async function populateDocumentSelectors(docs) {
+    try {
+        if (!docs) {
+            const res = await authFetch('/api/pdf/my-materials');
+            if (res.ok) {
+                docs = await res.json();
+                cachedStudentDocuments = docs;
+            }
+        }
+        const quizSelect = document.getElementById('adaptiveDocSelect');
+        const puzzleSelect = document.getElementById('puzzleDocSelect');
+
+        let optionsHtml = '<option value="">🌐 All Shared Course Materials</option>';
+        if (docs && docs.length > 0) {
+            docs.forEach(d => {
+                const count = d.generatedQuestionCount || 0;
+                optionsHtml += `<option value="${d.id}">📄 #${d.id} - ${escapeHtml(d.filename)} (${count} questions)</option>`;
+            });
+        }
+
+        if (quizSelect) {
+            const currentVal = currentQuizSession.documentId ? String(currentQuizSession.documentId) : '';
+            quizSelect.innerHTML = optionsHtml;
+            if (currentVal) quizSelect.value = currentVal;
+        }
+
+        if (puzzleSelect) {
+            const currentVal = currentPuzzleState.documentId ? String(currentPuzzleState.documentId) : '';
+            puzzleSelect.innerHTML = optionsHtml;
+            if (currentVal) puzzleSelect.value = currentVal;
+        }
+    } catch (e) {
+        console.error('Error populating document selectors:', e);
+    }
+}
+
+function onAdaptiveDocSelectChange(docIdStr) {
+    const docId = docIdStr ? parseInt(docIdStr, 10) : null;
+    currentQuizSession.documentId = docId;
+    currentQuizSession.currentQuestion = null;
+    currentQuizSession.questionIndex = 0;
+    startAdaptiveQuiz(docId);
+}
+
+function onPuzzleDocSelectChange(docIdStr) {
+    const docId = docIdStr ? parseInt(docIdStr, 10) : null;
+    currentPuzzleState.documentId = docId;
+    currentPuzzleState.sessionToken = null;
+    startWordSearchPuzzle(docId);
 }
 
 function renderStudentDocumentsTable(docs) {
@@ -2771,12 +2832,21 @@ async function generateQuestionsForStudentDoc(docId) {
 }
 
 function startQuizForDoc(docId) {
+    currentQuizSession.documentId = docId;
+    currentQuizSession.currentQuestion = null;
+    currentQuizSession.questionIndex = 0;
     switchView('adaptive-view', document.getElementById('nav-adaptive'));
+    const sel = document.getElementById('adaptiveDocSelect');
+    if (sel) sel.value = String(docId);
     startAdaptiveQuiz(docId);
 }
 
 function startWordSearchForDoc(docId) {
+    currentPuzzleState.documentId = docId;
+    currentPuzzleState.sessionToken = null;
     switchView('puzzle-view', document.getElementById('nav-puzzle'));
+    const sel = document.getElementById('puzzleDocSelect');
+    if (sel) sel.value = String(docId);
     startWordSearchPuzzle(docId);
 }
 
@@ -3238,12 +3308,18 @@ async function startWordSearchPuzzle(docId) {
     currentPuzzleState.completedWords = [];
     currentPuzzleState.selectedCells = [];
     currentPuzzleState.isDragging = false;
+    currentPuzzleState.questionLocked = false;
+    currentPuzzleState.activePointerId = null;
+    currentPuzzleState.selectionStart = null;
 
     try {
         const student = currentUser ? currentUser.username : 'Student';
         const docParam = currentPuzzleState.documentId ? `/${currentPuzzleState.documentId}` : '';
         const res = await authFetch(`/api/wordsearch/generate${docParam}?studentName=${encodeURIComponent(student)}`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to create puzzle session');
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || 'Failed to create puzzle session');
+        }
         const data = await res.json();
 
         currentPuzzleState.puzzleId = data.puzzleId;
@@ -3269,6 +3345,9 @@ function renderWordSearchGrid(grid, size) {
     const gridEl = document.getElementById('wordGrid');
     gridEl.style.gridTemplateColumns = `repeat(${size}, 40px)`;
     gridEl.style.gridTemplateRows = `repeat(${size}, 40px)`;
+    gridEl.style.touchAction = 'none';
+    gridEl.style.userSelect = 'none';
+    gridEl.style.webkitUserSelect = 'none';
     gridEl.innerHTML = '';
 
     for (let r = 0; r < size; r++) {
@@ -3279,78 +3358,161 @@ function renderWordSearchGrid(grid, size) {
             cell.dataset.col = c;
             cell.dataset.char = grid[r][c];
             cell.textContent = grid[r][c];
-
-            cell.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                handleCellMouseDown(r, c);
-            });
-
-            cell.addEventListener('mouseenter', () => {
-                if (currentPuzzleState.isDragging) {
-                    handleCellMouseEnter(r, c);
-                }
-            });
-
-            cell.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                handleCellMouseDown(r, c);
-            });
-
+            cell.style.userSelect = 'none';
+            cell.style.webkitUserSelect = 'none';
+            cell.style.touchAction = 'none';
             gridEl.appendChild(cell);
         }
     }
 
-    document.addEventListener('mouseup', handleDragEnd);
-    document.addEventListener('touchend', handleDragEnd);
+    attachGridPointerListeners(gridEl);
 }
 
-function handleCellMouseDown(r, c) {
-    currentPuzzleState.isDragging = true;
-    currentPuzzleState.selectionStart = { r, c };
-    updateSelectionHighlight([{ row: r, col: c }]);
+function attachGridPointerListeners(gridEl) {
+    if (gridEl._pointerListenersAttached) return;
+    gridEl._pointerListenersAttached = true;
+
+    gridEl.addEventListener('pointerdown', (e) => {
+        if (currentPuzzleState.questionLocked) return;
+        const cell = e.target.closest('.grid-cell');
+        if (!cell) return;
+
+        e.preventDefault();
+        try {
+            gridEl.setPointerCapture(e.pointerId);
+        } catch (_) {}
+
+        currentPuzzleState.activePointerId = e.pointerId;
+        currentPuzzleState.isDragging = true;
+        const r = parseInt(cell.dataset.row);
+        const c = parseInt(cell.dataset.col);
+        currentPuzzleState.selectionStart = { r, c };
+        updateSelectionHighlight([{ row: r, col: c }]);
+    });
+
+    gridEl.addEventListener('pointermove', (e) => {
+        if (!currentPuzzleState.isDragging || !currentPuzzleState.selectionStart) return;
+        if (e.pointerId !== currentPuzzleState.activePointerId) return;
+        e.preventDefault();
+
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        if (!el) return;
+        const cell = el.closest('.grid-cell');
+        if (!cell) return;
+
+        const curR = parseInt(cell.dataset.row);
+        const curC = parseInt(cell.dataset.col);
+        const start = currentPuzzleState.selectionStart;
+
+        const lineCells = getStraightLineCells(start.r, start.c, curR, curC, currentPuzzleState.size);
+        if (lineCells && lineCells.length > 0) {
+            updateSelectionHighlight(lineCells);
+        }
+    });
+
+    const endDrag = (e) => {
+        if (!currentPuzzleState.isDragging) return;
+        if (currentPuzzleState.activePointerId !== null && e.pointerId !== currentPuzzleState.activePointerId) return;
+
+        currentPuzzleState.isDragging = false;
+        currentPuzzleState.activePointerId = null;
+        try {
+            if (gridEl.hasPointerCapture(e.pointerId)) {
+                gridEl.releasePointerCapture(e.pointerId);
+            }
+        } catch (_) {}
+
+        if (currentPuzzleState.selectedCells && currentPuzzleState.selectedCells.length >= 2) {
+            validateWordSearchSelection();
+        } else {
+            clearLetterSelection();
+        }
+    };
+
+    gridEl.addEventListener('pointerup', endDrag);
+    gridEl.addEventListener('pointercancel', endDrag);
 }
 
-function handleCellMouseEnter(r, c) {
-    if (!currentPuzzleState.isDragging || !currentPuzzleState.selectionStart) return;
-    const start = currentPuzzleState.selectionStart;
-    const lineCells = getStraightLineCells(start.r, start.c, r, c);
-    if (lineCells) {
-        updateSelectionHighlight(lineCells);
+function getStraightLineCells(r1, c1, r2, c2, gridSize) {
+    if (r1 === r2 && c1 === c2) {
+        return [{ row: r1, col: c1 }];
     }
-}
 
-function handleDragEnd() {
-    if (!currentPuzzleState.isDragging) return;
-    currentPuzzleState.isDragging = false;
-    if (currentPuzzleState.selectedCells.length > 0) {
-        validateWordSearchSelection();
-    }
-}
-
-function getStraightLineCells(r1, c1, r2, c2) {
     const dr = r2 - r1;
     const dc = c2 - c1;
+    const absR = Math.abs(dr);
+    const absC = Math.abs(dc);
 
-    const stepR = dr === 0 ? 0 : (dr > 0 ? 1 : -1);
-    const stepC = dc === 0 ? 0 : (dc > 0 ? 1 : -1);
+    let stepR = 0;
+    let stepC = 0;
+    let steps = 0;
 
-    const lenR = Math.abs(dr);
-    const lenC = Math.abs(dc);
+    // Check exact straight lines in all 8 directions
+    if (absR === 0) {
+        // Horizontal
+        stepR = 0;
+        stepC = dc > 0 ? 1 : -1;
+        steps = absC;
+    } else if (absC === 0) {
+        // Vertical
+        stepR = dr > 0 ? 1 : -1;
+        stepC = 0;
+        steps = absR;
+    } else if (absR === absC) {
+        // Exact Diagonal
+        stepR = dr > 0 ? 1 : -1;
+        stepC = dc > 0 ? 1 : -1;
+        steps = absR;
+    } else {
+        // Dominant Ray Snapping (handles minor finger wobble on touch/mouse)
+        // Find closest ray among the 8 standard directions
+        const RAY_DIRS = [
+            { r: 0, c: 1 },   // Right
+            { r: 1, c: 1 },   // Down-Right
+            { r: 1, c: 0 },   // Down
+            { r: 1, c: -1 },  // Down-Left
+            { r: 0, c: -1 },  // Left
+            { r: -1, c: -1 }, // Up-Left
+            { r: -1, c: 0 },  // Up
+            { r: -1, c: 1 }   // Up-Right
+        ];
 
-    if (lenR !== 0 && lenC !== 0 && lenR !== lenC) {
-        return null;
+        let bestRay = RAY_DIRS[0];
+        let maxCos = -2;
+        const len = Math.hypot(dr, dc);
+
+        for (const ray of RAY_DIRS) {
+            const rayLen = Math.hypot(ray.r, ray.c);
+            const dot = (dr * ray.r + dc * ray.c) / (len * rayLen);
+            if (dot > maxCos) {
+                maxCos = dot;
+                bestRay = ray;
+            }
+        }
+
+        stepR = bestRay.r;
+        stepC = bestRay.c;
+        if (bestRay.r !== 0 && bestRay.c !== 0) {
+            steps = Math.round((absR + absC) / 2);
+        } else {
+            steps = Math.max(absR, absC);
+        }
     }
 
-    const steps = Math.max(lenR, lenC);
+    // Clamp steps so we never go out of grid bounds
     const cells = [];
     let curR = r1;
     let curC = c1;
 
     for (let i = 0; i <= steps; i++) {
+        if (gridSize && (curR < 0 || curR >= gridSize || curC < 0 || curC >= gridSize)) {
+            break;
+        }
         cells.push({ row: curR, col: curC });
         curR += stepR;
         curC += stepC;
     }
+
     return cells;
 }
 
@@ -3380,6 +3542,7 @@ function updateSelectionHighlight(coordList) {
 function clearLetterSelection() {
     currentPuzzleState.selectedCells = [];
     currentPuzzleState.isDragging = false;
+    currentPuzzleState.selectionStart = null;
     document.getElementById('currentSelectionLive').textContent = '';
     updateSelectionHighlight([]);
 }
@@ -3439,12 +3602,18 @@ function renderQuestionTracker() {
 }
 
 async function validateWordSearchSelection() {
+    if (currentPuzzleState.questionLocked) return;
+
     const feedbackBox = document.getElementById('puzzleFeedbackBox');
     const nextBtn = document.getElementById('puzzleNextBtn');
 
     if (!currentPuzzleState.selectedCells || currentPuzzleState.selectedCells.length < 2) {
+        clearLetterSelection();
         return;
     }
+
+    const firstCell = currentPuzzleState.selectedCells[0];
+    const lastCell = currentPuzzleState.selectedCells[currentPuzzleState.selectedCells.length - 1];
 
     let spelled = '';
     currentPuzzleState.selectedCells.forEach(c => {
@@ -3455,6 +3624,11 @@ async function validateWordSearchSelection() {
     const payload = {
         puzzleId: currentPuzzleState.puzzleId,
         sessionToken: currentPuzzleState.sessionToken,
+        questionId: currentPuzzleState.currentQuestion ? currentPuzzleState.currentQuestion.id : null,
+        startRow: firstCell.row,
+        startCol: firstCell.col,
+        endRow: lastCell.row,
+        endCol: lastCell.col,
         selectedWord: spelled,
         coordinates: currentPuzzleState.selectedCells
     };
@@ -3468,21 +3642,25 @@ async function validateWordSearchSelection() {
         const data = await res.json();
 
         if (data.correct) {
+            currentPuzzleState.questionLocked = true;
             feedbackBox.className = 'quiz-feedback-box feedback-correct';
-            feedbackBox.innerHTML = `<strong>✓ Correct Answer!</strong> You found <strong>${escapeHtml(data.foundWord)}</strong>.`;
+            feedbackBox.innerHTML = `<strong>✓ Correct Answer!</strong> You found <strong>${escapeHtml(data.foundWord || spelled)}</strong>.`;
             feedbackBox.style.display = 'block';
 
-            if (data.coordinates) {
-                data.coordinates.forEach(c => {
-                    currentPuzzleState.foundCoordinates.add(`${c.row},${c.col}`);
-                    const cell = document.querySelector(`.grid-cell[data-row="${c.row}"][data-col="${c.col}"]`);
-                    if (cell) cell.className = 'grid-cell found';
-                });
-            }
+            const coordsToMark = data.coordinates || currentPuzzleState.selectedCells;
+            coordsToMark.forEach(c => {
+                currentPuzzleState.foundCoordinates.add(`${c.row},${c.col}`);
+                const cell = document.querySelector(`.grid-cell[data-row="${c.row}"][data-col="${c.col}"]`);
+                if (cell) cell.className = 'grid-cell found';
+            });
 
             currentPuzzleState.completedCount = data.completedCount;
             currentPuzzleState.currentQuestionIndex = data.currentQuestionIndex;
             renderQuestionTracker();
+
+            const progressPct = Math.round((currentPuzzleState.completedCount / currentPuzzleState.totalQuestions) * 100);
+            document.getElementById('puzzleProgressText').textContent = `${currentPuzzleState.completedCount} / ${currentPuzzleState.totalQuestions} (${progressPct}%)`;
+            document.getElementById('puzzleProgressBar').style.width = `${progressPct}%`;
 
             if (data.puzzleCompleted) {
                 stopPuzzleTimer();
@@ -3492,7 +3670,7 @@ async function validateWordSearchSelection() {
                 nextBtn.style.display = 'inline-flex';
                 setTimeout(() => {
                     loadNextPuzzleQuestion();
-                }, 1600);
+                }, 1400);
             }
         } else {
             feedbackBox.className = 'quiz-feedback-box feedback-wrong';
@@ -3508,7 +3686,7 @@ async function validateWordSearchSelection() {
 
             setTimeout(() => {
                 clearLetterSelection();
-            }, 800);
+            }, 750);
 
             const errCountEl = document.getElementById('puzzleIncorrectCount');
             if (errCountEl) {
@@ -3518,10 +3696,12 @@ async function validateWordSearchSelection() {
 
     } catch (e) {
         showMessage('Validation error: ' + e.message);
+        clearLetterSelection();
     }
 }
 
 function loadNextPuzzleQuestion() {
+    currentPuzzleState.questionLocked = false;
     if (currentPuzzleState.nextPendingQuestion) {
         currentPuzzleState.currentQuestion = currentPuzzleState.nextPendingQuestion;
         currentPuzzleState.nextPendingQuestion = null;

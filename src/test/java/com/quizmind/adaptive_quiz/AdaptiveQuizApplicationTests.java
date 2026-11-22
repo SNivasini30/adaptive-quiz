@@ -77,6 +77,9 @@ class AdaptiveQuizApplicationTests {
     @Autowired
     private PdfController pdfController;
 
+    @Autowired
+    private com.quizmind.adaptive_quiz.repository.WordSearchPuzzleRepository puzzleRepository;
+
     @Test
     void testQuestionGenerationDeterministic() {
         List<String> sentences = Arrays.asList(
@@ -685,5 +688,146 @@ class AdaptiveQuizApplicationTests {
 
         ResponseEntity<?> s2DocQRes = questionController.getQuestionsByDocument(docId, s2Req);
         assertEquals(HttpStatus.FORBIDDEN, s2DocQRes.getStatusCode(), "Student 2 must be forbidden from viewing Student 1's private questions");
+    }
+
+    @Test
+    void testWordSearchStraightLineCoordinateValidationAndReverseSelection() {
+        // Create a word search session
+        WordSearchInitResponse init = wordSearchService.createWordSearchSession(null, "TestStudentDrag");
+        assertNotNull(init);
+        String sessionToken = init.getSessionToken();
+        Long puzzleId = init.getPuzzleId();
+        Long questionId = init.getCurrentQuestion().getId();
+
+        // Get placed word info from puzzle
+        WordSearchPuzzle puzzle = puzzleRepository.findById(puzzleId).orElseThrow();
+        WordPlacement targetPlacement = puzzle.getPlacements().get(0);
+        String expectedWord = targetPlacement.getWord();
+        int r = targetPlacement.getStartRow();
+        int c = targetPlacement.getStartCol();
+        int dR = targetPlacement.getdRow();
+        int dC = targetPlacement.getdCol();
+
+        java.util.List<CoordinateDto> forwardCoords = new java.util.ArrayList<>();
+        for (int i = 0; i < expectedWord.length(); i++) {
+            forwardCoords.add(new CoordinateDto(r + i * dR, c + i * dC));
+        }
+
+        java.util.List<CoordinateDto> reverseCoords = new java.util.ArrayList<>(forwardCoords);
+        java.util.Collections.reverse(reverseCoords);
+
+        // Test 1: Non-straight-line coordinates must be rejected
+        java.util.List<CoordinateDto> nonStraight = java.util.List.of(
+                forwardCoords.get(0),
+                new CoordinateDto(forwardCoords.get(0).getRow() + 2, forwardCoords.get(0).getCol() + 1)
+        );
+        WordSearchValidationRequest badReq = new WordSearchValidationRequest();
+        badReq.setPuzzleId(puzzleId);
+        badReq.setSessionToken(sessionToken);
+        badReq.setQuestionId(questionId);
+        badReq.setCoordinates(nonStraight);
+        badReq.setSelectedWord("BAD");
+        WordSearchValidationResponse badRes = wordSearchService.validateWordSelection(badReq);
+        assertFalse(badRes.isCorrect(), "Non-straight line selection must be rejected");
+
+        // Test 2: Reverse straight-line coordinates selection must be accepted as correct
+        WordSearchValidationRequest revReq = new WordSearchValidationRequest();
+        revReq.setPuzzleId(puzzleId);
+        revReq.setSessionToken(sessionToken);
+        revReq.setQuestionId(questionId);
+        revReq.setCoordinates(reverseCoords);
+        revReq.setStartRow(reverseCoords.get(0).getRow());
+        revReq.setStartCol(reverseCoords.get(0).getCol());
+        revReq.setEndRow(reverseCoords.get(reverseCoords.size() - 1).getRow());
+        revReq.setEndCol(reverseCoords.get(reverseCoords.size() - 1).getCol());
+        revReq.setSelectedWord(new StringBuilder(expectedWord).reverse().toString());
+
+        WordSearchValidationResponse revRes = wordSearchService.validateWordSelection(revReq);
+        assertTrue(revRes.isCorrect(), "Reverse straight-line drag selection must be accepted as correct!");
+        assertEquals(expectedWord, revRes.getFoundWord());
+        assertNotNull(revRes.getCoordinates());
+        assertEquals(expectedWord.length(), revRes.getCoordinates().size());
+        assertEquals(1, revRes.getCompletedCount());
+    }
+
+    @Test
+    void testAdaptiveQuizDocumentQuestionContinuity() {
+        long time = System.currentTimeMillis();
+        String studentName = "continuity_std_" + time;
+        RegisterRequest reg = new RegisterRequest(studentName, "pass123", "Continuity Student", null, UserRole.STUDENT);
+        authService.register(reg, null);
+
+        // Create a document with 3 questions
+        User user = userRepository.findByUsernameIgnoreCase(studentName).orElseThrow();
+        PdfDocument doc = new PdfDocument("continuity_doc.pdf", 2048L, 1, "Preview", "PROCESSED");
+        doc.setUploadedBy(user);
+        doc = pdfDocumentRepository.save(doc);
+
+        GeneratedQuestion q1 = new GeneratedQuestion("Continuity Q1", "Ans1", java.util.List.of("Ans1", "W1", "W2", "W3"), "DocTopic", Difficulty.EASY, QuestionType.MCQ, "doc", "exp", ApprovalStatus.APPROVED);
+        q1.setDocument(doc);
+        GeneratedQuestion q2 = new GeneratedQuestion("Continuity Q2", "Ans2", java.util.List.of("Ans2", "W1", "W2", "W3"), "DocTopic", Difficulty.EASY, QuestionType.MCQ, "doc", "exp", ApprovalStatus.APPROVED);
+        q2.setDocument(doc);
+        GeneratedQuestion q3 = new GeneratedQuestion("Continuity Q3", "Ans3", java.util.List.of("Ans3", "W1", "W2", "W3"), "DocTopic", Difficulty.EASY, QuestionType.MCQ, "doc", "exp", ApprovalStatus.APPROVED);
+        q3.setDocument(doc);
+        questionRepository.saveAll(java.util.List.of(q1, q2, q3));
+
+        // Start session tied to doc
+        Map<String, Object> sessionMap = adaptiveQuizService.startQuizSession(studentName, null, doc.getId());
+        String sessionId = (String) sessionMap.get("sessionId");
+        assertNotNull(sessionId);
+
+        QuestionDto firstQ = (QuestionDto) sessionMap.get("question");
+        assertNotNull(firstQ);
+        assertEquals("DocTopic", firstQ.getTopic());
+
+        // Submit answer for first question
+        AnswerSubmissionDto sub1 = new AnswerSubmissionDto();
+        sub1.setSessionId(sessionId);
+        sub1.setQuestionId(firstQ.getId());
+        sub1.setSelectedAnswer("Ans1");
+        sub1.setResponseTimeSec(4);
+        sub1.setConfidence(Confidence.HIGH);
+        sub1.setStudentName(studentName);
+
+        QuizFeedbackDto fb1 = adaptiveQuizService.submitAnswer(sub1);
+        assertNotNull(fb1);
+
+        // Fetch question 2
+        QuestionDto secondQ = adaptiveQuizService.getNextAdaptiveQuestion(studentName, null, sessionId);
+        assertNotNull(secondQ, "Second question from document must be returned");
+        assertNotEquals(firstQ.getId(), secondQ.getId());
+        assertEquals("DocTopic", secondQ.getTopic());
+
+        // Submit answer for second question
+        AnswerSubmissionDto sub2 = new AnswerSubmissionDto();
+        sub2.setSessionId(sessionId);
+        sub2.setQuestionId(secondQ.getId());
+        sub2.setSelectedAnswer("Ans2");
+        sub2.setResponseTimeSec(5);
+        sub2.setConfidence(Confidence.HIGH);
+        sub2.setStudentName(studentName);
+
+        QuizFeedbackDto fb2 = adaptiveQuizService.submitAnswer(sub2);
+        assertNotNull(fb2);
+
+        // Fetch question 3
+        QuestionDto thirdQ = adaptiveQuizService.getNextAdaptiveQuestion(studentName, null, sessionId);
+        assertNotNull(thirdQ, "Third question from document must be returned");
+
+        // Submit answer for third question
+        AnswerSubmissionDto sub3 = new AnswerSubmissionDto();
+        sub3.setSessionId(sessionId);
+        sub3.setQuestionId(thirdQ.getId());
+        sub3.setSelectedAnswer("Ans3");
+        sub3.setResponseTimeSec(5);
+        sub3.setConfidence(Confidence.HIGH);
+        sub3.setStudentName(studentName);
+
+        QuizFeedbackDto fb3 = adaptiveQuizService.submitAnswer(sub3);
+        assertNotNull(fb3);
+
+        // Fetch question 4 - all 3 document questions exhausted!
+        QuestionDto fourthQ = adaptiveQuizService.getNextAdaptiveQuestion(studentName, null, sessionId);
+        assertNull(fourthQ, "Must return null when all questions for the document have been answered");
     }
 }
