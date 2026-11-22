@@ -1,9 +1,11 @@
 package com.quizmind.adaptive_quiz.service;
 
 import com.quizmind.adaptive_quiz.model.*;
+import com.quizmind.adaptive_quiz.repository.PdfDocumentRepository;
 import com.quizmind.adaptive_quiz.repository.QuestionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -13,6 +15,8 @@ import java.util.regex.Pattern;
 public class QuestionGenerationService {
 
     private final QuestionRepository questionRepository;
+    private final PdfDocumentRepository pdfDocumentRepository;
+    private final PdfTextExtractionService pdfTextExtractionService;
 
     private static final Set<String> STOP_WORDS = new HashSet<>(Arrays.asList(
             "a", "an", "the", "and", "or", "but", "if", "because", "as", "what", "which",
@@ -31,20 +35,71 @@ public class QuestionGenerationService {
             "Encapsulation", "Polymorphism", "Inheritance", "Abstraction",
             "Operating System", "Deadlock", "Virtual Memory", "Paging",
             "Binary Search", "Linked List", "Queue", "Stack", "Recursion",
-            "TCP/IP", "DNS", "HTTP Protocol", "Load Balancer", "Thread Synchronization"
+            "TCP/IP", "DNS", "HTTP Protocol", "Load Balancer", "Thread Synchronization",
+            "Compiler", "Interpreter", "Algorithm Complexity", "Cache Memory"
     );
 
     @Autowired
-    public QuestionGenerationService(QuestionRepository questionRepository) {
+    public QuestionGenerationService(QuestionRepository questionRepository,
+                                     PdfDocumentRepository pdfDocumentRepository,
+                                     PdfTextExtractionService pdfTextExtractionService) {
         this.questionRepository = questionRepository;
+        this.pdfDocumentRepository = pdfDocumentRepository;
+        this.pdfTextExtractionService = pdfTextExtractionService;
+    }
+
+    /**
+     * Generates questions for a stored PdfDocument from its extracted text.
+     */
+    @Transactional
+    public List<GeneratedQuestion> generateQuestionsForDocument(PdfDocument document) {
+        if (document == null) {
+            throw new IllegalArgumentException("Document not found.");
+        }
+
+        String content = document.getExtractedText();
+        if (content == null || content.trim().isEmpty()) {
+            content = document.getRawTextPreview();
+        }
+
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("Insufficient readable content to generate meaningful questions. Please upload a more detailed PDF.");
+        }
+
+        List<String> sentences = pdfTextExtractionService.splitIntoSentences(content);
+        if (sentences.size() < 2) {
+            throw new IllegalArgumentException("Insufficient readable content to generate meaningful questions. Please upload a more detailed PDF.");
+        }
+
+        // Delete any existing questions for this document to avoid duplicates on regeneration
+        List<GeneratedQuestion> oldQuestions = questionRepository.findByDocumentId(document.getId());
+        if (!oldQuestions.isEmpty()) {
+            questionRepository.deleteAll(oldQuestions);
+        }
+
+        List<GeneratedQuestion> generated = generateFromSentencesInternal(sentences, document);
+        if (generated.isEmpty()) {
+            throw new IllegalArgumentException("Insufficient readable content to generate meaningful questions. Please upload a more detailed PDF.");
+        }
+
+        document.setGeneratedQuestionCount(generated.size());
+        document.setStatus("PROCESSED");
+        pdfDocumentRepository.save(document);
+
+        return generated;
     }
 
     public int generateQuestionsFromSentences(List<String> sentences, PdfDocument document) {
+        List<GeneratedQuestion> questions = generateFromSentencesInternal(sentences, document);
+        return questions.size();
+    }
+
+    private List<GeneratedQuestion> generateFromSentencesInternal(List<String> sentences, PdfDocument document) {
         if (sentences == null || sentences.isEmpty()) {
-            return 0;
+            return Collections.emptyList();
         }
 
-        // 1. First pass: extract concept candidate pool from all sentences
+        // 1. Concept candidate pool
         List<String> conceptPool = extractConceptPool(sentences);
 
         Set<String> seenQuestionTexts = new HashSet<>();
@@ -54,7 +109,7 @@ public class QuestionGenerationService {
             String trimmedSentence = sentence.trim();
             if (trimmedSentence.length() < 25) continue;
 
-            // Try definition pattern matching
+            // Pattern match definition / concept
             ConceptMatch match = matchDefinitionPattern(trimmedSentence);
 
             if (match != null && isValidConcept(match.concept)) {
@@ -63,32 +118,51 @@ public class QuestionGenerationService {
                     String topic = inferTopic(cleanConcept, trimmedSentence);
                     Difficulty difficulty = calculateDifficulty(trimmedSentence);
 
-                    // 1. Generate Fill-In-The-Blank Question
-                    String blankQuestionText = createBlankQuestion(trimmedSentence, match.concept);
-                    if (blankQuestionText != null && !seenQuestionTexts.contains(blankQuestionText.toLowerCase())) {
-                        seenQuestionTexts.add(blankQuestionText.toLowerCase());
+                    // 1. Fill-In-The-Blank Question
+                    String blankText = createBlankQuestion(trimmedSentence, match.concept);
+                    if (blankText != null && !seenQuestionTexts.contains(blankText.toLowerCase())) {
+                        seenQuestionTexts.add(blankText.toLowerCase());
 
                         GeneratedQuestion blankQ = new GeneratedQuestion(
-                                blankQuestionText,
+                                blankText,
                                 cleanConcept,
                                 Collections.emptyList(),
                                 topic,
                                 difficulty,
                                 QuestionType.FILL_IN_BLANK,
                                 trimmedSentence,
-                                "From context: " + trimmedSentence,
-                                ApprovalStatus.GENERATED
+                                "Context: " + trimmedSentence,
+                                ApprovalStatus.PENDING
                         );
                         blankQ.setDocument(document);
                         generatedList.add(blankQ);
                     }
 
-                    // 2. Generate Multiple Choice Question (MCQ)
+                    // 2. Definition-Based Question
+                    String defQuestionText = createDefinitionQuestion(match.concept, match.predicate);
+                    if (defQuestionText != null && !seenQuestionTexts.contains(defQuestionText.toLowerCase())) {
+                        seenQuestionTexts.add(defQuestionText.toLowerCase());
+
+                        GeneratedQuestion defQ = new GeneratedQuestion(
+                                defQuestionText,
+                                cleanConcept,
+                                Collections.emptyList(),
+                                topic,
+                                difficulty,
+                                QuestionType.DEFINITION,
+                                trimmedSentence,
+                                "Definition: " + trimmedSentence,
+                                ApprovalStatus.PENDING
+                        );
+                        defQ.setDocument(document);
+                        generatedList.add(defQ);
+                    }
+
+                    // 3. Multiple Choice Question (MCQ) with 4 options
                     List<String> distractors = generateDistractors(cleanConcept, conceptPool, topic);
                     List<String> options = new ArrayList<>();
                     options.add(cleanConcept);
                     options.addAll(distractors);
-                    // Shuffle deterministically based on sentence length/hash
                     Collections.shuffle(options, new Random(cleanConcept.hashCode()));
 
                     String mcqQuestionText = createMcqQuestion(trimmedSentence, match.concept, match.predicate);
@@ -103,22 +177,41 @@ public class QuestionGenerationService {
                                 difficulty,
                                 QuestionType.MCQ,
                                 trimmedSentence,
-                                "Definition: " + trimmedSentence,
-                                ApprovalStatus.GENERATED
+                                "Source: " + trimmedSentence,
+                                ApprovalStatus.PENDING
                         );
                         mcqQ.setDocument(document);
                         generatedList.add(mcqQ);
+                    }
+
+                    // 4. Concept Identification Question
+                    String conceptIdText = createConceptIdQuestion(match.concept, match.predicate);
+                    if (conceptIdText != null && !seenQuestionTexts.contains(conceptIdText.toLowerCase())) {
+                        seenQuestionTexts.add(conceptIdText.toLowerCase());
+
+                        GeneratedQuestion cidQ = new GeneratedQuestion(
+                                conceptIdText,
+                                cleanConcept,
+                                Collections.emptyList(),
+                                topic,
+                                difficulty,
+                                QuestionType.CONCEPT_IDENTIFICATION,
+                                trimmedSentence,
+                                "Identification: " + trimmedSentence,
+                                ApprovalStatus.PENDING
+                        );
+                        cidQ.setDocument(document);
+                        generatedList.add(cidQ);
                     }
                 }
             }
         }
 
-        // Save generated questions to database
+        // Save generated questions to repository
         if (!generatedList.isEmpty()) {
-            questionRepository.saveAll(generatedList);
+            return questionRepository.saveAll(generatedList);
         }
-
-        return generatedList.size();
+        return Collections.emptyList();
     }
 
     private static class ConceptMatch {
@@ -154,28 +247,35 @@ public class QuestionGenerationService {
         }
 
         // Pattern 4: X is used to/for Y
-        Pattern p4 = Pattern.compile("^([A-Z][A-Za-z0-9\\s\\-]{1,35}?)\\s+(?:is|are)\\s+(?:used|utilized|designed)\\s+(?:for|to)\\s+(.*)$", Pattern.CASE_INSENSITIVE);
+        Pattern p4 = Pattern.compile("^([A-Z][A-Za-z0-9\\s\\-]{1,35}?)\\s+(?:is|are)\\s+(?:used|utilized|designed|responsible)\\s+(?:for|to)\\s+(.*)$", Pattern.CASE_INSENSITIVE);
         Matcher m4 = p4.matcher(sentence);
         if (m4.find()) {
             return new ConceptMatch(m4.group(1).trim(), m4.group(2).trim());
         }
 
-        // Pattern 5: X is/are [noun phrase]
-        Pattern p5 = Pattern.compile("^([A-Z][A-Za-z0-9\\s\\-]{1,30}?)\\s+(?:is|are)\\s+(.*)$", Pattern.CASE_INSENSITIVE);
+        // Pattern 5: X consists of / comprises Y
+        Pattern p5 = Pattern.compile("^([A-Z][A-Za-z0-9\\s\\-]{1,35}?)\\s+(?:consists of|comprises|is composed of)\\s+(.*)$", Pattern.CASE_INSENSITIVE);
         Matcher m5 = p5.matcher(sentence);
         if (m5.find()) {
-            String concept = m5.group(1).trim();
-            String predicate = m5.group(2).trim();
+            return new ConceptMatch(m5.group(1).trim(), m5.group(2).trim());
+        }
+
+        // Pattern 6: X is/are [noun phrase]
+        Pattern p6 = Pattern.compile("^([A-Z][A-Za-z0-9\\s\\-]{1,30}?)\\s+(?:is|are)\\s+(.*)$", Pattern.CASE_INSENSITIVE);
+        Matcher m6 = p6.matcher(sentence);
+        if (m6.find()) {
+            String concept = m6.group(1).trim();
+            String predicate = m6.group(2).trim();
             if (concept.split("\\s+").length <= 4 && predicate.length() > 15) {
                 return new ConceptMatch(concept, predicate);
             }
         }
 
-        // Pattern 6: Capitalized term followed by provides/manages/enables/implements
-        Pattern p6 = Pattern.compile("^([A-Z][A-Za-z0-9\\s\\-]{1,30}?)\\s+(?:provides|manages|enables|implements|ensures|represents)\\s+(.*)$", Pattern.CASE_INSENSITIVE);
-        Matcher m6 = p6.matcher(sentence);
-        if (m6.find()) {
-            return new ConceptMatch(m6.group(1).trim(), m6.group(2).trim());
+        // Pattern 7: Capitalized term followed by provides/manages/enables/implements
+        Pattern p7 = Pattern.compile("^([A-Z][A-Za-z0-9\\s\\-]{1,30}?)\\s+(?:provides|manages|enables|implements|ensures|represents)\\s+(.*)$", Pattern.CASE_INSENSITIVE);
+        Matcher m7 = p7.matcher(sentence);
+        if (m7.find()) {
+            return new ConceptMatch(m7.group(1).trim(), m7.group(2).trim());
         }
 
         return null;
@@ -183,7 +283,6 @@ public class QuestionGenerationService {
 
     private String cleanConceptName(String raw) {
         String cleaned = raw.replaceAll("^(The|A|An|In|On|By|Under|For)\\s+", "").trim();
-        // Capitalize words nicely
         String[] words = cleaned.split("\\s+");
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < words.length; i++) {
@@ -202,22 +301,34 @@ public class QuestionGenerationService {
         if (concept == null) return false;
         String trimmed = concept.trim();
         if (trimmed.length() < 3 || trimmed.length() > 35) return false;
-        // Don't accept phrases that contain too many words
         if (trimmed.split("\\s+").length > 4) return false;
-        // Don't accept generic pronouns or numbers
         if (trimmed.matches(".*\\d{3,}.*")) return false;
         return !STOP_WORDS.contains(trimmed.toLowerCase());
     }
 
     private String createBlankQuestion(String sentence, String concept) {
-        // Replace first occurrence of concept in sentence with "________"
         String regex = "(?i)\\b" + Pattern.quote(concept) + "\\b";
-        String replaced = sentence.replaceFirst(regex, "________");
-        if (!replaced.contains("________")) {
-            // Prepend blank if replacement didn't match word boundary
-            replaced = "________ " + sentence.substring(Math.min(sentence.length(), concept.length())).trim();
+        String replaced = sentence.replaceFirst(regex, "______");
+        if (!replaced.contains("______")) {
+            replaced = "______ " + sentence.substring(Math.min(sentence.length(), concept.length())).trim();
         }
         return replaced;
+    }
+
+    private String createDefinitionQuestion(String concept, String predicate) {
+        if (predicate != null && predicate.length() > 10) {
+            String cleanPred = predicate.replaceAll("[.]+$", "");
+            return "What is " + cleanPred + "?";
+        }
+        return "What is the definition of " + cleanConceptName(concept) + "?";
+    }
+
+    private String createConceptIdQuestion(String concept, String predicate) {
+        if (predicate != null && predicate.length() > 10) {
+            String cleanPred = predicate.replaceAll("[.]+$", "");
+            return "Which concept or term refers to: \"" + cleanPred + "\"?";
+        }
+        return "Which technical concept matches: \"" + cleanConceptName(concept) + "\"?";
     }
 
     private String createMcqQuestion(String sentence, String concept, String predicate) {
@@ -229,7 +340,6 @@ public class QuestionGenerationService {
 
     private List<String> extractConceptPool(List<String> sentences) {
         Set<String> pool = new LinkedHashSet<>();
-        // Extract capitalized technical terms (2 to 3 words or camelCase)
         Pattern termPattern = Pattern.compile("\\b([A-Z][a-zA-Z0-9]+(?:\\s+[A-Z][a-zA-Z0-9]+)?)\\b");
 
         for (String s : sentences) {

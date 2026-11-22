@@ -59,14 +59,12 @@ public class WordSearchService {
         if (documentId != null) {
             document = pdfDocumentRepository.findById(documentId).orElse(null);
             candidateQuestions = questionRepository.findByDocumentIdAndApprovalStatus(documentId, ApprovalStatus.APPROVED);
-            if (candidateQuestions.isEmpty()) {
-                candidateQuestions = questionRepository.findByDocumentId(documentId);
-            }
         } else {
             candidateQuestions = questionRepository.findByApprovalStatus(ApprovalStatus.APPROVED);
-            if (candidateQuestions.isEmpty()) {
-                candidateQuestions = questionRepository.findAll();
-            }
+        }
+
+        if (candidateQuestions.isEmpty()) {
+            throw new IllegalArgumentException("No approved questions are available for this puzzle. A teacher must review and approve questions first.");
         }
 
         // Filter and select candidate questions with good single/multi-word concepts

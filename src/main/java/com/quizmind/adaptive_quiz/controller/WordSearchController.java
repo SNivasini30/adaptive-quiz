@@ -18,11 +18,14 @@ public class WordSearchController {
 
     private final WordSearchService wordSearchService;
     private final AuthService authService;
+    private final com.quizmind.adaptive_quiz.repository.WordSearchPuzzleRepository puzzleRepository;
 
     @Autowired
-    public WordSearchController(WordSearchService wordSearchService, AuthService authService) {
+    public WordSearchController(WordSearchService wordSearchService, AuthService authService,
+                                com.quizmind.adaptive_quiz.repository.WordSearchPuzzleRepository puzzleRepository) {
         this.wordSearchService = wordSearchService;
         this.authService = authService;
+        this.puzzleRepository = puzzleRepository;
     }
 
     /**
@@ -88,6 +91,22 @@ public class WordSearchController {
             Map<String, Object> question = wordSearchService.getCurrentQuestion(sessionToken);
             return ResponseEntity.ok(question);
         } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/api/wordsearch/{id}")
+    public ResponseEntity<?> getWordSearch(@PathVariable("id") String id) {
+        try {
+            try {
+                Long puzzleId = Long.parseLong(id);
+                return puzzleRepository.findById(puzzleId)
+                        .map(p -> ResponseEntity.ok(wordSearchService.generatePuzzle(p.getDocument() != null ? p.getDocument().getId() : null)))
+                        .orElse(ResponseEntity.notFound().build());
+            } catch (NumberFormatException nfe) {
+                return ResponseEntity.ok(wordSearchService.getSessionProgress(id));
+            }
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

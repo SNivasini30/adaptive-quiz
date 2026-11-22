@@ -2,11 +2,14 @@ package com.quizmind.adaptive_quiz.controller;
 
 import com.quizmind.adaptive_quiz.model.ApprovalStatus;
 import com.quizmind.adaptive_quiz.model.GeneratedQuestion;
+import com.quizmind.adaptive_quiz.model.PdfDocument;
 import com.quizmind.adaptive_quiz.model.User;
 import com.quizmind.adaptive_quiz.model.UserRole;
 import com.quizmind.adaptive_quiz.model.dto.QuestionDto;
+import com.quizmind.adaptive_quiz.repository.PdfDocumentRepository;
 import com.quizmind.adaptive_quiz.repository.QuestionRepository;
 import com.quizmind.adaptive_quiz.service.AuthService;
+import com.quizmind.adaptive_quiz.service.QuestionGenerationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,20 +24,67 @@ import java.util.*;
 public class QuestionController {
 
     private final QuestionRepository questionRepository;
+    private final PdfDocumentRepository pdfDocumentRepository;
+    private final QuestionGenerationService questionGenerationService;
     private final AuthService authService;
 
     @Autowired
-    public QuestionController(QuestionRepository questionRepository, AuthService authService) {
+    public QuestionController(QuestionRepository questionRepository,
+                              PdfDocumentRepository pdfDocumentRepository,
+                              QuestionGenerationService questionGenerationService,
+                              AuthService authService) {
         this.questionRepository = questionRepository;
+        this.pdfDocumentRepository = pdfDocumentRepository;
+        this.questionGenerationService = questionGenerationService;
         this.authService = authService;
     }
 
-    private boolean checkTeacherAuth(HttpServletRequest request) {
-        User user = authService.resolveUser(request);
-        if (user == null) {
-            return false;
+    /**
+     * POST /api/questions/generate/{documentId}
+     * Triggers automatic deterministic question generation from the uploaded PDF document.
+     */
+    @PostMapping(value = {"/generate/{documentId}", "/generate"})
+    public ResponseEntity<?> generateQuestions(
+            @PathVariable(value = "documentId", required = false) Long pathDocId,
+            @RequestParam(value = "documentId", required = false) Long queryDocId,
+            HttpServletRequest request) {
+
+        Long documentId = pathDocId != null ? pathDocId : queryDocId;
+        if (documentId == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Document ID is required."));
         }
-        return user.getRole() == UserRole.TEACHER;
+
+        User user = authService.resolveUser(request);
+        if (user != null && user.getRole() != UserRole.TEACHER) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success", false, "error", "Access denied: Only teachers can generate questions."));
+        }
+
+        PdfDocument document = pdfDocumentRepository.findById(documentId).orElse(null);
+        if (document == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "error", "PDF Document with ID " + documentId + " was not found."));
+        }
+
+        try {
+            List<GeneratedQuestion> questions = questionGenerationService.generateQuestionsForDocument(document);
+            List<QuestionDto> dtos = questions.stream().map(QuestionDto::new).toList();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Successfully generated " + questions.size() + " questions from PDF.");
+            response.put("documentId", document.getId());
+            response.put("filename", document.getFilename());
+            response.put("generatedCount", questions.size());
+            response.put("questions", dtos);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error", "Failed to generate questions: " + e.getMessage()));
+        }
     }
 
     @GetMapping
@@ -45,7 +95,7 @@ public class QuestionController {
         if (documentId != null) {
             if (statusStr != null && !statusStr.equalsIgnoreCase("ALL")) {
                 try {
-                    ApprovalStatus status = ApprovalStatus.valueOf(statusStr.toUpperCase());
+                    ApprovalStatus status = parseApprovalStatus(statusStr);
                     list = questionRepository.findByDocumentIdAndApprovalStatus(documentId, status);
                 } catch (IllegalArgumentException e) {
                     list = questionRepository.findByDocumentId(documentId);
@@ -55,7 +105,7 @@ public class QuestionController {
             }
         } else if (statusStr != null && !statusStr.equalsIgnoreCase("ALL")) {
             try {
-                ApprovalStatus status = ApprovalStatus.valueOf(statusStr.toUpperCase());
+                ApprovalStatus status = parseApprovalStatus(statusStr);
                 list = questionRepository.findByApprovalStatusOrderByIdDesc(status);
             } catch (IllegalArgumentException e) {
                 list = questionRepository.findAllByOrderByIdDesc();
@@ -66,6 +116,13 @@ public class QuestionController {
 
         List<QuestionDto> dtos = list.stream().map(QuestionDto::new).toList();
         return ResponseEntity.ok(dtos);
+    }
+
+    private ApprovalStatus parseApprovalStatus(String statusStr) {
+        if (statusStr == null) return ApprovalStatus.PENDING;
+        String upper = statusStr.trim().toUpperCase();
+        if ("GENERATED".equals(upper)) return ApprovalStatus.PENDING;
+        return ApprovalStatus.valueOf(upper);
     }
 
     @GetMapping("/{id}")

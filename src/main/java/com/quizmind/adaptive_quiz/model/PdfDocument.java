@@ -27,6 +27,10 @@ public class PdfDocument {
     @Column(length = 100000)
     private String rawTextPreview;
 
+    @Lob
+    @Column(columnDefinition = "CLOB")
+    private String extractedText;
+
     private String status;
 
     private LocalDateTime uploadTimestamp;
@@ -98,6 +102,14 @@ public class PdfDocument {
 
     public void setRawTextPreview(String rawTextPreview) {
         this.rawTextPreview = rawTextPreview;
+    }
+
+    public String getExtractedText() {
+        return extractedText;
+    }
+
+    public void setExtractedText(String extractedText) {
+        this.extractedText = extractedText;
     }
 
     public String getStatus() {

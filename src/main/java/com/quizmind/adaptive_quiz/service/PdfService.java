@@ -2,31 +2,31 @@ package com.quizmind.adaptive_quiz.service;
 
 import com.quizmind.adaptive_quiz.model.PdfDocument;
 import com.quizmind.adaptive_quiz.repository.PdfDocumentRepository;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 @Service
 public class PdfService {
 
     private final PdfDocumentRepository pdfDocumentRepository;
+    private final PdfTextExtractionService pdfTextExtractionService;
     private final QuestionGenerationService questionGenerationService;
 
     @Autowired
     public PdfService(PdfDocumentRepository pdfDocumentRepository,
+                      PdfTextExtractionService pdfTextExtractionService,
                       QuestionGenerationService questionGenerationService) {
         this.pdfDocumentRepository = pdfDocumentRepository;
+        this.pdfTextExtractionService = pdfTextExtractionService;
         this.questionGenerationService = questionGenerationService;
     }
 
+    @Transactional
     public PdfDocument processPdf(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Uploaded file is empty or missing.");
@@ -47,86 +47,29 @@ public class PdfService {
             throw new IllegalArgumentException("Duplicate upload detected: '" + originalFilename + "' with identical file size has already been processed.");
         }
 
-        byte[] bytes = file.getBytes();
-        if (bytes.length == 0) {
-            throw new IllegalArgumentException("File content is empty.");
-        }
+        // Extract text via dedicated extraction service
+        PdfTextExtractionService.ExtractedPdfContent content = pdfTextExtractionService.extractText(file);
 
-        String extractedText;
-        try (PDDocument document = Loader.loadPDF(bytes)) {
-            if (document.isEncrypted()) {
-                throw new IllegalArgumentException("Encrypted or password-protected PDF documents are not supported.");
-            }
-            PDFTextStripper stripper = new PDFTextStripper();
-            stripper.setSortByPosition(true);
-            extractedText = stripper.getText(document);
-        } catch (IllegalArgumentException iae) {
-            throw iae;
-        } catch (Exception e) {
-            throw new IOException("Failed to parse and extract text from PDF: " + e.getMessage(), e);
-        }
-
-        if (extractedText == null || extractedText.trim().isEmpty()) {
-            throw new IllegalArgumentException("No text could be extracted from this PDF. Scanned image-only PDFs are not supported without OCR.");
-        }
-
-        // Clean formatting and whitespace
-        String cleanedText = cleanText(extractedText);
-
-        // Validate minimum extractable readable content
-        String[] words = cleanedText.split("\\s+");
-        if (words.length < 15 || cleanedText.length() < 60) {
-            throw new IllegalArgumentException("The PDF contains insufficient readable text (" + words.length + " words found). Please provide a richer educational document.");
-        }
-
-        List<String> sentences = splitIntoSentences(cleanedText);
-        if (sentences.isEmpty()) {
-            throw new IllegalArgumentException("Insufficient readable sentences extracted from the document.");
-        }
-
-        String preview = cleanedText.length() > 500 ? cleanedText.substring(0, 500) + "..." : cleanedText;
+        String preview = content.getCleanedText().length() > 500
+                ? content.getCleanedText().substring(0, 500) + "..."
+                : content.getCleanedText();
 
         PdfDocument pdfDoc = new PdfDocument(
                 originalFilename,
                 fileSize,
-                sentences.size(),
+                content.getSentences().size(),
                 preview,
-                "PROCESSED"
+                "UPLOADED"
         );
+        pdfDoc.setExtractedText(content.getCleanedText());
         pdfDoc = pdfDocumentRepository.save(pdfDoc);
 
-        // Run deterministic rule-based question generation
-        int generatedCount = questionGenerationService.generateQuestionsFromSentences(sentences, pdfDoc);
+        // Deterministically generate questions from extracted sentences
+        int generatedCount = questionGenerationService.generateQuestionsFromSentences(content.getSentences(), pdfDoc);
         pdfDoc.setGeneratedQuestionCount(generatedCount);
+        pdfDoc.setStatus("PROCESSED");
+
         return pdfDocumentRepository.save(pdfDoc);
-    }
-
-    private String cleanText(String rawText) {
-        String text = rawText.replace("\r", " ");
-        text = text.replaceAll("-\\s*\\n\\s*", "");
-        text = text.replaceAll("\\s+", " ");
-        return text.trim();
-    }
-
-    public List<String> splitIntoSentences(String text) {
-        List<String> sentences = new ArrayList<>();
-        if (text == null || text.trim().isEmpty()) {
-            return sentences;
-        }
-
-        Pattern sentencePattern = Pattern.compile("(?<=[.!?])\\s+(?=[A-Z0-9])");
-        String[] tokens = sentencePattern.split(text);
-
-        for (String token : tokens) {
-            String trimmed = token.trim();
-            if (trimmed.length() >= 25 && trimmed.split("\\s+").length >= 4) {
-                if (!trimmed.endsWith(".") && !trimmed.endsWith("?") && !trimmed.endsWith("!")) {
-                    trimmed += ".";
-                }
-                sentences.add(trimmed);
-            }
-        }
-        return sentences;
     }
 
     public List<PdfDocument> getAllDocuments() {
@@ -135,5 +78,9 @@ public class PdfService {
 
     public PdfDocument getDocumentById(Long id) {
         return pdfDocumentRepository.findById(id).orElse(null);
+    }
+
+    public List<String> splitIntoSentences(String text) {
+        return pdfTextExtractionService.splitIntoSentences(text);
     }
 }

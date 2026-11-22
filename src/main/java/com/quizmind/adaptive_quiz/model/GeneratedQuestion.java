@@ -32,7 +32,7 @@ public class GeneratedQuestion {
     private Difficulty difficulty;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32, columnDefinition = "VARCHAR(32)")
     private QuestionType questionType;
 
     @Column(length = 2000)
@@ -42,8 +42,8 @@ public class GeneratedQuestion {
     private String explanation;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ApprovalStatus approvalStatus = ApprovalStatus.GENERATED;
+    @Column(nullable = false, length = 32, columnDefinition = "VARCHAR(32)")
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "document_id")

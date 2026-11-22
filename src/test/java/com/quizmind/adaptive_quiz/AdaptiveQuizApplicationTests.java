@@ -469,4 +469,128 @@ class AdaptiveQuizApplicationTests {
         String header = new String(Arrays.copyOfRange(pdfBytes, 0, 5));
         assertEquals("%PDF-", header, "File must be a valid PDF document starting with '%PDF-'");
     }
+
+    private byte[] createSamplePdfBytes(String title, String... contentLines) throws Exception {
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            org.apache.pdfbox.pdmodel.PDPage page = new org.apache.pdfbox.pdmodel.PDPage();
+            doc.addPage(page);
+            try (org.apache.pdfbox.pdmodel.PDPageContentStream cs = new org.apache.pdfbox.pdmodel.PDPageContentStream(doc, page)) {
+                cs.beginText();
+                cs.setFont(new org.apache.pdfbox.pdmodel.font.PDType1Font(org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA_BOLD), 14);
+                cs.newLineAtOffset(50, 700);
+                cs.showText(title);
+                cs.setFont(new org.apache.pdfbox.pdmodel.font.PDType1Font(org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA), 12);
+                for (String line : contentLines) {
+                    cs.newLineAtOffset(0, -20);
+                    cs.showText(line);
+                }
+                cs.endText();
+            }
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            doc.save(baos);
+            return baos.toByteArray();
+        }
+    }
+
+    @Test
+    void testPdfUploadTextExtractionAndQuestionGenerationWorkflow() throws Exception {
+        String time = "" + System.currentTimeMillis();
+        String teacherUser = "pdf_teacher_" + time;
+        RegisterRequest tr = new RegisterRequest(teacherUser, "teach123", "Dr. PDF", null, UserRole.TEACHER);
+        tr.setTeacherPasscode("TEACHER2026");
+        authService.register(tr, null);
+        User teacher = userRepository.findByUsernameIgnoreCase(teacherUser).orElseThrow();
+
+        MockHttpServletRequest teacherReq = new MockHttpServletRequest();
+        String token = "token-pdf-" + time;
+        authService.authenticateAs(teacher, token);
+        teacherReq.addHeader("X-Auth-Token", token);
+
+        // 1. Create real PDF with educational content
+        byte[] pdfData = createSamplePdfBytes("Computer Science Fundamentals",
+                "An operating system is defined as system software that manages computer hardware and software resources.",
+                "Encapsulation is the technique of making the fields in a class private and providing access via public methods.",
+                "Virtual memory refers to a memory management capability of an operating system using hardware and software.",
+                "Polymorphism allows objects to be treated as instances of their parent class rather than their actual class."
+        );
+
+        MockMultipartFile file = new MockMultipartFile("file", "course_materials_" + time + ".pdf", "application/pdf", pdfData);
+
+        // 2. Upload PDF
+        ResponseEntity<?> uploadRes = pdfController.uploadPdf(file, teacherReq);
+        assertEquals(HttpStatus.OK, uploadRes.getStatusCode(), "PDF upload must succeed");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) uploadRes.getBody();
+        assertNotNull(body);
+        assertTrue((Boolean) body.get("success"));
+        Long docId = (Long) body.get("documentId");
+        assertNotNull(docId);
+
+        // 3. Verify extracted text is stored in database
+        PdfDocument savedDoc = pdfDocumentRepository.findById(docId).orElseThrow();
+        assertNotNull(savedDoc.getExtractedText(), "Extracted text must be stored in database");
+        assertTrue(savedDoc.getExtractedText().contains("operating system"));
+
+        // 4. Trigger Question Generation from documentId endpoint
+        ResponseEntity<?> genRes = questionController.generateQuestions(docId, null, teacherReq);
+        assertEquals(HttpStatus.OK, genRes.getStatusCode(), "Question generation endpoint must succeed");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> genBody = (Map<String, Object>) genRes.getBody();
+        assertNotNull(genBody);
+        assertTrue((Boolean) genBody.get("success"));
+        int genCount = (Integer) genBody.get("generatedCount");
+        assertTrue(genCount >= 2, "Should generate multiple questions from educational sentences");
+
+        // 5. Retrieve Questions for Document
+        ResponseEntity<List<QuestionDto>> docQuestions = questionController.getQuestionsByDocument(docId);
+        assertEquals(HttpStatus.OK, docQuestions.getStatusCode());
+        List<QuestionDto> list = docQuestions.getBody();
+        assertNotNull(list);
+        assertFalse(list.isEmpty());
+
+        QuestionDto firstQ = list.get(0);
+        assertEquals(ApprovalStatus.PENDING, firstQ.getApprovalStatus(), "Generated questions must start with PENDING status");
+
+        // 6. Teacher approves the question
+        ResponseEntity<?> approveRes = questionController.approveQuestion(firstQ.getId(), teacherReq);
+        assertEquals(HttpStatus.OK, approveRes.getStatusCode());
+
+        GeneratedQuestion afterApprove = questionRepository.findById(firstQ.getId()).orElseThrow();
+        assertEquals(ApprovalStatus.APPROVED, afterApprove.getApprovalStatus());
+
+        // 7. Teacher rejects another question
+        if (list.size() > 1) {
+            QuestionDto secondQ = list.get(1);
+            ResponseEntity<?> rejectRes = questionController.rejectQuestion(secondQ.getId(), teacherReq);
+            assertEquals(HttpStatus.OK, rejectRes.getStatusCode());
+            GeneratedQuestion afterReject = questionRepository.findById(secondQ.getId()).orElseThrow();
+            assertEquals(ApprovalStatus.REJECTED, afterReject.getApprovalStatus());
+        }
+    }
+
+    @Test
+    void testInvalidPdfUploadHandling() {
+        MockHttpServletRequest teacherReq = new MockHttpServletRequest();
+        User teacher = userRepository.findByUsernameIgnoreCase("teacher").orElseThrow();
+        String token = "tok-invalid-test";
+        authService.authenticateAs(teacher, token);
+        teacherReq.addHeader("X-Auth-Token", token);
+
+        // 1. Empty file
+        MockMultipartFile emptyFile = new MockMultipartFile("file", "empty.pdf", "application/pdf", new byte[0]);
+        ResponseEntity<?> emptyRes = pdfController.uploadPdf(emptyFile, teacherReq);
+        assertEquals(HttpStatus.BAD_REQUEST, emptyRes.getStatusCode());
+
+        // 2. Non-PDF file
+        MockMultipartFile txtFile = new MockMultipartFile("file", "notes.txt", "text/plain", "Hello world text".getBytes());
+        ResponseEntity<?> txtRes = pdfController.uploadPdf(txtFile, teacherReq);
+        assertEquals(HttpStatus.BAD_REQUEST, txtRes.getStatusCode());
+
+        // 3. Corrupted PDF
+        MockMultipartFile corruptFile = new MockMultipartFile("file", "corrupt.pdf", "application/pdf", "corrupted non pdf bytes".getBytes());
+        ResponseEntity<?> corruptRes = pdfController.uploadPdf(corruptFile, teacherReq);
+        assertTrue(corruptRes.getStatusCode() == HttpStatus.BAD_REQUEST || corruptRes.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }

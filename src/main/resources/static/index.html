@@ -1106,10 +1106,11 @@ body {
                                 <th>Sentences Extracted</th>
                                 <th>Questions Generated</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="documentsTableBody">
-                            <tr><td colspan="6" style="text-align:center; color:#94a3b8;">Loading documents...</td></tr>
+                            <tr><td colspan="7" style="text-align:center; color:#94a3b8;">Loading documents...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2662,7 +2663,7 @@ async function loadUploadedDocuments() {
 function renderDocumentsTable(docs) {
     const tbody = document.getElementById('documentsTableBody');
     if (!docs || docs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8;">No uploaded documents yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#94a3b8;">No uploaded documents yet.</td></tr>';
         return;
     }
 
@@ -2674,8 +2675,45 @@ function renderDocumentsTable(docs) {
             <td>${d.sentenceCount || 0}</td>
             <td><span class="badge badge-strong">${d.generatedQuestionCount || 0} questions</span></td>
             <td><span class="status-pill pill-approved">${escapeHtml(d.status || 'PROCESSED')}</span></td>
+            <td>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button class="primary-btn" id="gen-btn-${d.id}" style="padding:4px 8px; font-size:11px;" onclick="generateQuestionsForDoc(${d.id})">⚡ Generate Questions</button>
+                    <button class="secondary-btn" style="padding:4px 8px; font-size:11px;" onclick="openReviewForDoc(${d.id})">🔍 Review</button>
+                </div>
+            </td>
         </tr>
     `).join('');
+}
+
+async function generateQuestionsForDoc(docId) {
+    const btn = document.getElementById(`gen-btn-${docId}`);
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+    }
+    try {
+        const res = await authFetch(`/api/questions/generate/${docId}`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showMessage(`✓ Generated ${data.generatedCount} questions for "${data.filename}"!`);
+            await loadUploadedDocuments();
+            openReviewForDoc(docId);
+        } else {
+            showMessage(data.error || 'Failed to generate questions.', true);
+        }
+    } catch (e) {
+        showMessage(`Error generating questions: ${e.message}`, true);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '⚡ Generate Questions';
+        }
+    }
+}
+
+function openReviewForDoc(docId) {
+    switchView('review-view', document.getElementById('nav-review'));
+    loadQuestionsForReview(docId);
 }
 
 function filterDocumentsTable() {
@@ -2695,13 +2733,19 @@ function filterDocumentsTable() {
 // 3. TEACHER QUESTION REVIEW MODULE
 // ==========================================
 let currentReviewFilter = 'ALL';
+let activeDocumentReviewId = null;
 
-async function loadQuestionsForReview() {
+async function loadQuestionsForReview(docId) {
     const container = document.getElementById('reviewQuestionsContainer');
     container.innerHTML = '<p style="color:#94a3b8; padding:20px;">Loading questions for review...</p>';
 
+    if (docId !== undefined) {
+        activeDocumentReviewId = docId;
+    }
+
     try {
-        const res = await authFetch('/api/questions');
+        const url = activeDocumentReviewId ? `/api/questions/document/${activeDocumentReviewId}` : '/api/questions';
+        const res = await authFetch(url);
         if (!res.ok) throw new Error('Failed to fetch questions');
         cachedReviewQuestions = await res.json();
         filterReviewQuestionsRealtime();
@@ -2724,7 +2768,11 @@ function filterReviewQuestionsRealtime() {
     let filtered = cachedReviewQuestions;
 
     if (currentReviewFilter !== 'ALL') {
-        filtered = filtered.filter(q => q.approvalStatus === currentReviewFilter);
+        if (currentReviewFilter === 'PENDING' || currentReviewFilter === 'GENERATED') {
+            filtered = filtered.filter(q => q.approvalStatus === 'PENDING' || q.approvalStatus === 'GENERATED');
+        } else {
+            filtered = filtered.filter(q => q.approvalStatus === currentReviewFilter);
+        }
     }
     if (diffFilter !== 'ALL') {
         filtered = filtered.filter(q => q.difficulty === diffFilter);

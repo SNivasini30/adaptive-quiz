@@ -20,6 +20,7 @@ public class DataInitializerService implements CommandLineRunner {
     private final StudentTopicProgressRepository progressRepository;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Autowired
@@ -28,17 +29,25 @@ public class DataInitializerService implements CommandLineRunner {
                                   QuizAttemptRepository quizAttemptRepository,
                                   StudentTopicProgressRepository progressRepository,
                                   UserRepository userRepository,
-                                  UserProfileRepository userProfileRepository) {
+                                  UserProfileRepository userProfileRepository,
+                                  org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
         this.questionRepository = questionRepository;
         this.pdfDocumentRepository = pdfDocumentRepository;
         this.quizAttemptRepository = quizAttemptRepository;
         this.progressRepository = progressRepository;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
     public void run(String... args) {
+        try {
+            jdbcTemplate.execute("ALTER TABLE questions ALTER COLUMN approval_status VARCHAR(32)");
+        } catch (Exception ignored) {}
+        try {
+            jdbcTemplate.execute("ALTER TABLE questions ALTER COLUMN question_type VARCHAR(32)");
+        } catch (Exception ignored) {}
         // 1. Seed Teacher Account
         User teacher = userRepository.findByUsernameIgnoreCase("teacher").orElse(null);
         if (teacher == null) {
