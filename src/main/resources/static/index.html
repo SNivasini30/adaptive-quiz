@@ -1,0 +1,3730 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Adaptive Quiz | Learning & Word Search</title>
+
+<!-- Chart.js for Dashboard Visualizations -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+body {
+    background: #f5f7fb;
+    color: #202b43;
+}
+
+/* MAIN LAYOUT */
+.container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 255px;
+    background: #17243b;
+    color: white;
+    padding: 25px 16px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.logo {
+    font-size: 19px;
+    font-weight: 700;
+    padding: 5px 10px 25px;
+    line-height: 1.5;
+    letter-spacing: 0.5px;
+}
+
+.logo span {
+    color: #72a5ff;
+}
+
+.nav-title {
+    font-size: 11px;
+    color: #8d9ab1;
+    padding: 12px 10px 8px;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    margin-bottom: 6px;
+    border-radius: 9px;
+    color: #bdc8dc;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background: #2c4265;
+    color: white;
+}
+
+.nav-link.active {
+    border-left: 3px solid #72a5ff;
+    font-weight: 600;
+}
+
+.nav-icon {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+/* MAIN CONTENT */
+.main {
+    flex: 1;
+    min-width: 0;
+    padding: 28px 35px;
+    overflow-y: auto;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    gap: 15px;
+}
+
+.topbar h1 {
+    font-size: 25px;
+    font-weight: 700;
+    color: #17243b;
+}
+
+.topbar p {
+    color: #8590a4;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.profile {
+    background: white;
+    padding: 8px 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    box-shadow: 0 2px 10px #17243b0b;
+}
+
+.avatar {
+    background: #dce9ff;
+    color: #2862c4;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* VIEW SWITCHER */
+.view-section {
+    display: none;
+    animation: fadeIn 0.25s ease;
+}
+
+.view-section.active-view {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* WELCOME SECTION */
+.welcome {
+    background: linear-gradient(135deg, #275294 0%, #17325c 100%);
+    color: white;
+    padding: 26px 30px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    box-shadow: 0 5px 20px #17243b15;
+}
+
+.welcome h2 {
+    font-size: 21px;
+    margin-bottom: 8px;
+}
+
+.welcome p {
+    color: #c9d8ee;
+    font-size: 13.5px;
+    margin-bottom: 18px;
+    line-height: 1.5;
+    max-width: 780px;
+}
+
+.primary-btn {
+    background: #2862c4;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.primary-btn:hover {
+    background: #1f4fa0;
+    transform: translateY(-1px);
+}
+
+.primary-btn.white-btn {
+    background: white;
+    color: #275294;
+}
+
+.primary-btn.white-btn:hover {
+    background: #f0f4fc;
+}
+
+.secondary-btn {
+    background: white;
+    color: #3b4966;
+    border: 1px solid #d3dced;
+    padding: 9px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.secondary-btn:hover {
+    background: #f1f4fa;
+    border-color: #bcc9e2;
+}
+
+.danger-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.danger-btn:hover {
+    background: #dc2626;
+}
+
+.success-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.success-btn:hover {
+    background: #059669;
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 28px 0 16px;
+}
+
+.section-heading h3 {
+    font-size: 17px;
+    color: #17243b;
+    font-weight: 700;
+}
+
+.section-heading small {
+    color: #8590a4;
+    font-size: 12.5px;
+}
+
+/* STATS CARDS */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px 22px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px #17243b08;
+    position: relative;
+    border-left: 4px solid #2862c4;
+}
+
+.stat-card .label {
+    color: #8590a4;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-card h2 {
+    font-size: 26px;
+    margin: 7px 0 4px;
+    color: #17243b;
+    font-weight: 700;
+}
+
+.stat-card small {
+    color: #637089;
+    font-size: 12px;
+}
+
+.stat-icon {
+    position: absolute;
+    right: 18px;
+    top: 20px;
+    font-size: 22px;
+    opacity: 0.85;
+}
+
+/* PANELS & CONTENT GRIDS */
+.content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.panel {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px #17243b08;
+    margin-bottom: 22px;
+}
+
+.panel h3 {
+    font-size: 16px;
+    color: #17243b;
+    margin-bottom: 5px;
+    font-weight: 700;
+}
+
+.panel-subtitle {
+    color: #8590a4;
+    font-size: 12.5px;
+    margin-bottom: 18px;
+}
+
+/* TOPIC PROGRESS BAR */
+.topic-item {
+    margin-bottom: 15px;
+}
+
+.topic-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.topic-bar {
+    height: 8px;
+    background: #ebf0f7;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.topic-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.4s ease;
+}
+
+.fill-blue { background: #2862c4; }
+.fill-green { background: #10b981; }
+.fill-orange { background: #f59e0b; }
+.fill-red { background: #ef4444; }
+
+/* BADGES */
+.badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-strong { background: #dcfce7; color: #15803d; }
+.badge-weak { background: #fee2e2; color: #b91c1c; }
+.badge-neutral { background: #f1f5f9; color: #475569; }
+
+/* CUSTOM TABLES */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.custom-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.custom-table th {
+    background: #f8fafc;
+    color: #475569;
+    padding: 12px 14px;
+    font-weight: 600;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.custom-table td {
+    padding: 13px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+
+.custom-table tr:hover {
+    background: #f8fafc;
+}
+
+/* STATUS PILLS */
+.status-pill {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.pill-approved { background: #dcfce7; color: #166534; }
+.pill-rejected { background: #fee2e2; color: #991b1b; }
+.pill-generated { background: #fef3c7; color: #92400e; }
+.pill-easy { background: #dbeafe; color: #1e40af; }
+.pill-medium { background: #fef3c7; color: #92400e; }
+.pill-hard { background: #fee2e2; color: #991b1b; }
+.pill-correct { background: #dcfce7; color: #166534; }
+.pill-wrong { background: #fee2e2; color: #991b1b; }
+
+/* UPLOAD BOX */
+.upload-box {
+    border: 2px dashed #b9cbe7;
+    background: #f8fafd;
+    padding: 40px 20px;
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 20px;
+}
+
+.upload-box:hover {
+    border-color: #2862c4;
+    background: #f0f5fc;
+}
+
+.spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* WORD SEARCH PUZZLE */
+.puzzle-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 25px;
+    align-items: start;
+}
+
+.puzzle-question-card {
+    background: white;
+    border-radius: 12px;
+    padding: 22px;
+    box-shadow: 0 2px 10px #17243b08;
+    margin-bottom: 20px;
+    border-left: 4px solid #28599b;
+}
+
+.grid-board {
+    display: inline-grid;
+    gap: 3px;
+    background: #202b43;
+    padding: 12px;
+    border-radius: 10px;
+    user-select: none;
+    touch-action: none;
+}
+
+.grid-cell {
+    width: 40px;
+    height: 40px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: #17243b;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.grid-cell.selected {
+    background: #93c5fd;
+    color: #1e3a8a;
+    transform: scale(0.95);
+}
+
+.grid-cell.found {
+    background: #86efac;
+    color: #14532d;
+}
+
+.grid-cell.wrong-flash {
+    background: #fca5a5;
+    color: #7f1d1d;
+}
+
+/* ADAPTIVE QUIZ */
+.quiz-card {
+    background: white;
+    border-radius: 14px;
+    padding: 28px;
+    box-shadow: 0 4px 15px #17243b0c;
+    margin-bottom: 25px;
+}
+
+.quiz-option {
+    border: 1px solid #d3dced;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+}
+
+.quiz-option:hover {
+    background: #f1f4fa;
+    border-color: #2862c4;
+}
+
+.quiz-option.selected {
+    background: #ebf2fc;
+    border-color: #2862c4;
+    font-weight: 600;
+    color: #1e4b94;
+}
+
+.quiz-feedback-box {
+    padding: 16px 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.feedback-correct {
+    background: #dcfce7;
+    color: #14532d;
+    border: 1px solid #86efac;
+}
+
+.feedback-wrong {
+    background: #fee2e2;
+    color: #7f1d1d;
+    border: 1px solid #fca5a5;
+}
+
+/* QUESTION REVIEW */
+.review-card {
+    background: white;
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px #17243b08;
+    border: 1px solid #e2e8f0;
+}
+
+.review-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+/* TOAST */
+#toast {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    background: #17243b;
+    color: white;
+    padding: 13px 22px;
+    border-radius: 9px;
+    font-size: 13px;
+    display: none;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.25);
+    z-index: 3000;
+    max-width: 380px;
+    animation: toastIn 0.2s ease;
+}
+
+@keyframes toastIn {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* RESPONSIVE */
+@media(max-width: 1024px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .content-grid, .puzzle-container { grid-template-columns: 1fr; }
+    .sidebar { width: 220px; }
+}
+@media(max-width: 768px) {
+    .container { flex-direction: column; }
+    .sidebar { width: 100%; }
+    .main { padding: 20px 16px; }
+    .stats { grid-template-columns: 1fr; }
+}
+
+/* ==========================================
+   ROLE BADGE & AUTHENTICATION STYLES
+   ========================================== */
+.role-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: #dbeafe;
+    color: #1e40af;
+}
+.role-badge.role-teacher {
+    background: #fef3c7;
+    color: #92400e;
+}
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+.filter-input {
+    padding: 8px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: white;
+}
+.filter-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.auth-card {
+    background: white;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    animation: authCardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes authCardIn {
+    from { opacity: 0; transform: scale(0.95) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.auth-header {
+    background: #17243b;
+    color: white;
+    padding: 24px 24px 18px;
+    text-align: center;
+}
+.auth-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+.auth-header h2 span {
+    color: #72a5ff;
+}
+.auth-header p {
+    color: #94a3b8;
+    font-size: 13px;
+    margin-top: 4px;
+}
+.auth-tabs {
+    display: flex;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+}
+.auth-tab {
+    flex: 1;
+    padding: 13px 16px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.auth-tab.active {
+    color: #1e40af;
+    background: white;
+    border-bottom: 2px solid #2563eb;
+}
+.auth-body {
+    padding: 22px 26px 26px;
+}
+.auth-input-group {
+    margin-bottom: 14px;
+}
+.auth-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 5px;
+}
+.auth-input {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+.auth-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.auth-alert {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 14px;
+    display: none;
+}
+.auth-alert.alert-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+.auth-alert.alert-success {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+.auth-radio-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+}
+.auth-radio-card {
+    flex: 1;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 9px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #334155;
+    transition: all 0.2s;
+}
+.auth-radio-card:hover {
+    border-color: #94a3b8;
+}
+.auth-radio-card.active {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #1e40af;
+    font-weight: 600;
+}
+.auth-demo-chips {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed #e2e8f0;
+    font-size: 12px;
+    color: #64748b;
+}
+.demo-chip {
+    display: inline-block;
+    padding: 4px 9px;
+    margin: 4px 4px 0 0;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.demo-chip:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo">
+            SMART <span>ADAPTIVE QUIZ</span>
+        </div>
+
+        <div class="nav-title" id="nav-student-title">STUDENT MENU</div>
+
+        <div class="nav-link active student-nav" id="nav-dashboard" onclick="switchView('dashboard-view', this)">
+            <span class="nav-icon">▦</span> Dashboard
+        </div>
+
+        <div class="nav-link student-nav" id="nav-puzzle" onclick="switchView('puzzle-view', this)">
+            <span class="nav-icon">🔠</span> Word Search Puzzle
+        </div>
+
+        <div class="nav-link student-nav" id="nav-adaptive" onclick="switchView('adaptive-view', this)">
+            <span class="nav-icon">✎</span> Adaptive Quiz
+        </div>
+
+        <div class="nav-link student-nav" id="nav-mistake" onclick="switchView('mistake-view', this)">
+            <span class="nav-icon">◎</span> Mistake Analyzer
+        </div>
+
+        <div class="nav-link student-nav" id="nav-progress" onclick="switchView('progress-view', this)">
+            <span class="nav-icon">📈</span> Progress & Stats
+        </div>
+
+        <div class="nav-title" id="nav-teacher-title">TEACHER MENU</div>
+
+        <div class="nav-link teacher-nav" id="nav-upload" onclick="switchView('upload-view', this)">
+            <span class="nav-icon">▤</span> Upload PDF
+        </div>
+
+        <div class="nav-link teacher-nav" id="nav-review" onclick="switchView('review-view', this)">
+            <span class="nav-icon">✓</span> Question Review
+        </div>
+
+        <div class="nav-link teacher-nav" id="nav-students" onclick="switchView('students-view', this)">
+            <span class="nav-icon">👥</span> Student Analytics
+        </div>
+
+        <div class="nav-title">ACCOUNT</div>
+        <div class="nav-link" onclick="openProfileModal()">
+            <span class="nav-icon">👤</span> My Profile
+        </div>
+        <div class="nav-link" style="color:#f87171;" onclick="logout()">
+            <span class="nav-icon">🚪</span> Sign Out
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+            <div>
+                <h1 id="page-title">Dashboard</h1>
+                <p id="page-subtitle">Track your learning and improve your performance.</p>
+            </div>
+
+            <div class="profile" id="topbar-profile-container">
+                <div class="avatar" id="topbar-avatar" onclick="openProfileModal()" style="cursor:pointer;" title="View Profile">S</div>
+                <div style="cursor:pointer;" onclick="openProfileModal()">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <strong id="topbar-name" style="font-size:13px;">Student</strong>
+                        <span id="topbar-role-badge" class="role-badge">STUDENT</span>
+                    </div>
+                    <span id="topbar-username" style="font-size:11px; color:#8590a4;">@student</span>
+                </div>
+                <button class="secondary-btn" style="padding:5px 10px; font-size:12px; margin-left:6px;" onclick="openProfileModal()" title="Manage Profile">👤 Profile</button>
+                <button class="secondary-btn" style="padding:5px 10px; font-size:12px; background:#fff1f2; color:#e11d48; border-color:#fecdd3;" onclick="logout()" title="Sign Out">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- 1. DASHBOARD VIEW -->
+        <div id="dashboard-view" class="view-section active-view">
+            <!-- ACTIVE SESSION RESUME BANNER -->
+            <div id="active-session-banner" style="display:none; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color:white; padding:18px 22px; border-radius:12px; margin-bottom:24px; box-shadow:0 4px 15px rgba(59,130,246,0.3); align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <div style="font-size:12px; letter-spacing:1px; text-transform:uppercase; color:#bfdbfe; font-weight:700;">▶ In-Progress Session Detected</div>
+                    <div id="active-session-desc" style="font-size:15px; font-weight:600; margin-top:2px;">You have an unfinished session waiting to be completed.</div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="primary-btn white-btn" id="resume-session-btn" onclick="resumeActiveSession()">Resume Session →</button>
+                    <button class="secondary-btn" style="background:rgba(255,255,255,0.15); color:white; border-color:rgba(255,255,255,0.3);" onclick="dismissActiveSession()">Dismiss</button>
+                </div>
+            </div>
+
+            <section class="welcome">
+                <h2 id="welcome-heading">Welcome back, Student! 👋</h2>
+                <p>Every question is an opportunity to improve. Upload notes to generate questions, solve adaptive quizzes, or challenge yourself with the interactive word search puzzle.</p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button class="primary-btn white-btn" onclick="startAdaptiveQuiz()">
+                        Start Adaptive Quiz →
+                    </button>
+                    <button class="primary-btn" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4);" onclick="switchView('puzzle-view', document.getElementById('nav-puzzle'))">
+                        Play Word Search 🔠
+                    </button>
+                    <button class="primary-btn" style="background:#0284c7; border:1px solid rgba(255,255,255,0.4); display:inline-flex; align-items:center; gap:6px;" onclick="downloadPerformanceReportPdf()">
+                        <span>📄</span> Download Report (PDF)
+                    </button>
+                </div>
+            </section>
+
+            <div class="section-heading">
+                <h3>Performance Overview</h3>
+                <small>Calculated from database attempt records</small>
+            </div>
+
+            <!-- Performance Stats Cards -->
+            <section class="stats">
+                <div class="stat-card">
+                    <div class="stat-icon">📝</div>
+                    <div class="label">Questions Attempted</div>
+                    <h2 id="stat-total-attempts">0</h2>
+                    <small>Across all topics</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="label">Overall Accuracy</div>
+                    <h2 id="stat-accuracy">0%</h2>
+                    <small id="stat-accuracy-sub">Based on attempts</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="label">Average Response Time</div>
+                    <h2 id="stat-avg-time">0s</h2>
+                    <small>Per question</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📚</div>
+                    <div class="label">Topics Practiced</div>
+                    <h2 id="stat-topics-count">0</h2>
+                    <small>Active subject areas</small>
+                </div>
+                <div class="stat-card" style="border-left-color:#10b981;">
+                    <div class="stat-icon">🎓</div>
+                    <div class="label">Quizzes Completed</div>
+                    <h2 id="stat-quizzes-completed">0</h2>
+                    <small>Completed sessions</small>
+                </div>
+                <div class="stat-card" style="border-left-color:#8b5cf6;">
+                    <div class="stat-icon">🔠</div>
+                    <div class="label">Puzzles Solved</div>
+                    <h2 id="stat-puzzles-completed">0</h2>
+                    <small>Word search completions</small>
+                </div>
+                <div class="stat-card" style="border-left-color:#06b6d4;">
+                    <div class="stat-icon">🌟</div>
+                    <div class="label">Strongest Topic</div>
+                    <h2 id="stat-strongest-topic" style="font-size:18px; line-height:1.3;">-</h2>
+                    <small>Highest mastery</small>
+                </div>
+                <div class="stat-card" style="border-left-color:#f59e0b;">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="label">Focus Area</div>
+                    <h2 id="stat-weakest-topic" style="font-size:18px; line-height:1.3;">-</h2>
+                    <small>Suggested revision</small>
+                </div>
+            </section>
+
+            <!-- Topic Performance & Answer Distribution -->
+            <div class="content-grid">
+                <!-- Topic Performance List -->
+                <div class="panel">
+                    <h3>Topic-wise Performance</h3>
+                    <p class="panel-subtitle">Performance breakdown with adaptive mastery tracking</p>
+                    <div id="topic-performance-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Accuracy Doughnut Chart -->
+                <div class="panel">
+                    <h3>Answer Distribution</h3>
+                    <p class="panel-subtitle">Correct vs Incorrect responses</p>
+                    <div style="position: relative; height: 220px;">
+                        <canvas id="accuracyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weak Topics Diagnostic Recommendations -->
+            <div class="panel">
+                <h3>Weak Topic Diagnostics & Action Plan</h3>
+                <p class="panel-subtitle">Rule-based recommendations based on historical accuracy</p>
+                <div id="weak-topics-box">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Recent Activity Table with Search Filter -->
+            <div class="panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h3>Recent Learning Activity</h3>
+                        <p class="panel-subtitle" style="margin-bottom:0;">Live stream of latest quiz responses</p>
+                    </div>
+                    <input type="text" id="activitySearchInput" placeholder="🔍 Filter activity by topic or answer..." oninput="filterActivityTable()" class="filter-input" style="width:260px;">
+                </div>
+                <div class="table-responsive">
+                    <table class="custom-table" id="activityTable">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Topic</th>
+                                <th>Question</th>
+                                <th>Difficulty</th>
+                                <th>Your Answer</th>
+                                <th>Result</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activityTableBody">
+                            <tr><td colspan="7" style="text-align:center; color:#94a3b8;">Loading activity records...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. UPLOAD PDF VIEW -->
+        <div id="upload-view" class="view-section">
+            <div class="panel" style="max-width: 800px; margin: 0 auto;">
+                <h3>Upload Educational PDF</h3>
+                <p class="panel-subtitle">Deterministic rule-based question generation and word search puzzle extraction using Apache PDFBox.</p>
+
+                <div class="upload-box" id="dropZone" onclick="document.getElementById('pdfFileInput').click()">
+                    <p style="font-size: 36px; margin-bottom: 12px;">📄</p>
+                    <p style="font-weight: 600; color: #28599b; font-size: 15px;">Click to browse or drag & drop educational PDF here</p>
+                    <p style="font-size: 12px; color: #8590a4; margin-top: 6px;">Text-based PDF documents up to 25MB supported</p>
+                    <p id="selectedFileLabel" style="margin-top: 10px; font-weight: 600; color: #10b981; font-size: 13px; display:none;"></p>
+                    <input type="file" id="pdfFileInput" style="display: none;" accept=".pdf" onchange="onFileSelected(event)">
+                </div>
+
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button id="uploadBtn" class="primary-btn" onclick="uploadPdfDocument()">
+                        <span id="uploadBtnSpinner" class="spinner" style="display:none;"></span>
+                        <span id="uploadBtnText">Process & Generate Questions →</span>
+                    </button>
+                    <button class="secondary-btn" onclick="clearSelectedFile()">Clear</button>
+                </div>
+
+                <div id="uploadResultBox" style="margin-top: 20px; display:none;"></div>
+
+                <div class="section-heading" style="margin-top: 35px;">
+                    <div>
+                        <h3>Uploaded Document History</h3>
+                        <small>Processed educational files</small>
+                    </div>
+                    <input type="text" id="docSearchInput" placeholder="🔍 Search documents..." oninput="filterDocumentsTable()" class="filter-input" style="width:230px;">
+                </div>
+                <div class="table-responsive">
+                    <table class="custom-table" id="documentsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Document Filename</th>
+                                <th>Size</th>
+                                <th>Sentences Extracted</th>
+                                <th>Questions Generated</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="documentsTableBody">
+                            <tr><td colspan="6" style="text-align:center; color:#94a3b8;">Loading documents...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. TEACHER QUESTION REVIEW AND APPROVAL VIEW -->
+        <div id="review-view" class="view-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <h3 style="font-size: 18px; font-weight: 700;">Question Review & Approval</h3>
+                    <p style="color: #64748b; font-size: 13px;">Manage question lifecycle: GENERATED → APPROVED / REJECTED. Only approved questions are served in student Word Search and Adaptive Quiz.</p>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input type="text" id="reviewSearchInput" placeholder="🔍 Search question or topic..." oninput="filterReviewQuestionsRealtime()" class="filter-input" style="width:230px;">
+                    <select id="reviewDiffFilter" onchange="filterReviewQuestionsRealtime()" class="filter-input">
+                        <option value="ALL">All Difficulties</option>
+                        <option value="EASY">Easy</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HARD">Hard</option>
+                    </select>
+                    <button class="success-btn" onclick="batchApproveSelected()">✓ Approve All Pending</button>
+                    <button class="secondary-btn" onclick="loadQuestionsForReview()">↺ Refresh</button>
+                </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div style="display:flex; gap:10px; margin-bottom: 20px;">
+                <button class="secondary-btn filter-btn active-filter" onclick="filterReviewQuestions('ALL', this)">All Questions</button>
+                <button class="secondary-btn filter-btn" onclick="filterReviewQuestions('GENERATED', this)">Pending Approval (GENERATED)</button>
+                <button class="secondary-btn filter-btn" onclick="filterReviewQuestions('APPROVED', this)">Approved</button>
+                <button class="secondary-btn filter-btn" onclick="filterReviewQuestions('REJECTED', this)">Rejected</button>
+            </div>
+
+            <div id="reviewQuestionsContainer">
+                <!-- Dynamically populated cards -->
+            </div>
+        </div>
+
+        <!-- 4. WORD SEARCH PUZZLE VIEW (INTERACTIVE QUESTION-BY-QUESTION) -->
+        <div id="puzzle-view" class="view-section">
+            <div class="section-heading" style="margin-top: 0;">
+                <div>
+                    <h3>Interactive Question-by-Question Word Search Puzzle</h3>
+                    <small>Discover the answer to each question by finding the hidden concept in the letter grid. Answers are never revealed in advance.</small>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="secondary-btn" onclick="startWordSearchPuzzle()">↺ New Puzzle Session</button>
+                </div>
+            </div>
+
+            <!-- Main Puzzle Container -->
+            <div id="puzzlePlayArea" class="puzzle-container">
+                <!-- Left: Active Question Card + Letter Grid -->
+                <div>
+                    <!-- Active Question Card -->
+                    <div class="puzzle-question-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <span class="status-pill pill-medium" id="puzzleQuestionNumBadge">Question 1 of 8</span>
+                                <span class="status-pill badge-neutral" id="puzzleTopicBadge">Topic: General</span>
+                            </div>
+                            <div style="font-weight:700; color:#1e293b; font-size:13px;" id="puzzleTimerDisplay">
+                                ⏱️ 00:00
+                            </div>
+                        </div>
+
+                        <div id="puzzleQuestionText" style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 12px 0 8px; line-height: 1.45;">
+                            Loading question...
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size: 12px; color: #64748b; margin-bottom: 8px;">
+                            <span>🔍 Select letters in a straight line: horizontal, vertical, diagonal (forward or reverse).</span>
+                            <span id="currentSelectionLive" style="font-weight:700; color:#28599b; font-size:14px; letter-spacing:1px;"></span>
+                        </div>
+
+                        <!-- Feedback Message Box (Green / Red) -->
+                        <div id="puzzleFeedbackBox" class="quiz-feedback-box" style="display:none; padding:12px 16px; margin: 10px 0 4px;"></div>
+
+                        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                            <button id="puzzleNextBtn" class="primary-btn" style="display:none;" onclick="loadNextPuzzleQuestion()">
+                                Next Question →
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Letter Grid -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:13px; color:#64748b;">
+                        <span>Letter Grid (Drag or click start & end to select word):</span>
+                        <button class="secondary-btn" style="padding:4px 10px; font-size:11px;" onclick="clearLetterSelection()">Clear Selection</button>
+                    </div>
+                    <div class="grid-board" id="wordGrid" style="touch-action:none;">
+                        <!-- Filled dynamically by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Right: Progress Tracker & Discovered Concepts -->
+                <div>
+                    <div class="panel">
+                        <h3>Session Progress</h3>
+                        <p class="panel-subtitle">Question-by-Question Completion</p>
+
+                        <div style="margin-bottom: 16px;">
+                            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:6px;">
+                                <span>Questions Solved</span>
+                                <span id="puzzleProgressText">0 / 0</span>
+                            </div>
+                            <div class="topic-bar">
+                                <div id="puzzleProgressBar" class="topic-fill fill-green" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 18px;">
+                            <div style="display:flex; justify-content:space-between; font-size:13px; color:#475569; margin-bottom:6px;">
+                                <span>Incorrect Attempts:</span>
+                                <strong id="puzzleIncorrectCount" style="color:#ef4444;">0</strong>
+                            </div>
+                        </div>
+
+                        <h4 style="font-size:13px; color:#17243b; margin-bottom:10px; font-weight:700;">Completed Questions</h4>
+                        <div id="puzzleQuestionTracker" style="display:flex; flex-direction:column; gap:8px;">
+                            <!-- Progress indicators -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Puzzle Completion Card -->
+            <div id="puzzleCompletionCard" class="panel" style="display:none; max-width:650px; margin: 30px auto; text-align:center; padding:35px 25px;">
+                <div style="font-size: 50px; margin-bottom:12px;">🎉</div>
+                <h2 style="color:#17243b; font-size:24px; margin-bottom:8px;">Puzzle Completed!</h2>
+                <p style="color:#64748b; font-size:14px; margin-bottom:24px;">All question-by-question technical concepts successfully identified!</p>
+
+                <div class="stats" style="grid-template-columns: repeat(3, 1fr); margin-bottom:25px;">
+                    <div class="stat-card">
+                        <div class="label">Total Solved</div>
+                        <h2 id="compTotalQuestions">0</h2>
+                        <small>Concepts</small>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Accuracy</div>
+                        <h2 id="compAccuracy">100%</h2>
+                        <small>Attempt ratio</small>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Time Taken</div>
+                        <h2 id="compDuration">0s</h2>
+                        <small>Elapsed time</small>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:12px; justify-content:center;">
+                    <button class="primary-btn" onclick="startWordSearchPuzzle()">Play Another Puzzle 🔠</button>
+                    <button class="secondary-btn" onclick="switchView('adaptive-view', document.getElementById('nav-adaptive'))">Try Adaptive Quiz ✎</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. ADAPTIVE QUIZ VIEW -->
+        <div id="adaptive-view" class="view-section">
+            <div class="section-heading" style="margin-top:0;">
+                <div>
+                    <h3>Smart Adaptive Quiz</h3>
+                    <small>Difficulty dynamically adjusts based on 3-correct-streak or 2-incorrect-error rules</small>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="secondary-btn" onclick="startAdaptiveQuiz()">↺ New Quiz Session</button>
+                </div>
+            </div>
+
+            <div style="max-width: 760px; margin: 0 auto;">
+                <div class="quiz-card">
+                    <!-- Quiz Header with Difficulty Badge and Timer -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span id="quizDifficultyBadge" class="status-pill pill-easy">Difficulty: EASY</span>
+                            <span id="quizTopicBadge" class="status-pill badge-neutral">Topic: General</span>
+                        </div>
+                        <div style="font-weight:700; color:#1e293b; font-size:13px;" id="quizTimerDisplay">
+                            ⏱️ 00:00
+                        </div>
+                    </div>
+
+                    <!-- Question Text -->
+                    <h3 id="quizQuestionText" style="font-size:18px; color:#0f172a; margin-bottom:20px; line-height:1.5;">
+                        Loading adaptive question...
+                    </h3>
+
+                    <!-- MCQ Options or Text input -->
+                    <div id="quizOptionsList">
+                        <!-- Options generated dynamically -->
+                    </div>
+
+                    <!-- Metacognitive Confidence Selector -->
+                    <div style="margin: 20px 0 10px;">
+                        <label style="display:block; font-size:12.5px; font-weight:600; color:#475569; margin-bottom:8px;">
+                            Your Confidence Level:
+                        </label>
+                        <div style="display:flex; gap:10px;">
+                            <button type="button" class="secondary-btn confidence-btn" onclick="setConfidence('LOW', this)">Low</button>
+                            <button type="button" class="secondary-btn confidence-btn active-conf" onclick="setConfidence('MEDIUM', this)">Medium</button>
+                            <button type="button" class="secondary-btn confidence-btn" onclick="setConfidence('HIGH', this)">High</button>
+                        </div>
+                    </div>
+
+                    <!-- Answer Feedback Box -->
+                    <div id="quizFeedbackBox" class="quiz-feedback-box" style="display:none;"></div>
+
+                    <!-- Action Buttons -->
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                        <button id="submitAnswerBtn" class="primary-btn" onclick="submitQuizAnswer()">
+                            Submit Answer ✓
+                        </button>
+                        <button id="nextQuestionBtn" class="primary-btn" style="display:none;" onclick="loadNextQuizQuestion()">
+                            Next Adaptive Question →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. MISTAKE ANALYZER VIEW -->
+        <div id="mistake-view" class="view-section">
+            <div class="panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h3>Mistake Analyzer & Diagnostic Feedback</h3>
+                        <p class="panel-subtitle" style="margin-bottom:0;">Review errors, inspect distractors, and practice weak concepts.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <input type="text" id="mistakeSearchInput" placeholder="🔍 Search mistakes by question or topic..." oninput="filterMistakesRealtime()" class="filter-input" style="width:250px;">
+                        <select id="mistakeDiffFilter" onchange="filterMistakesRealtime()" class="filter-input">
+                            <option value="ALL">All Difficulties</option>
+                            <option value="EASY">Easy</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HARD">Hard</option>
+                        </select>
+                        <button class="secondary-btn" onclick="loadMistakes()">↺ Refresh Errors</button>
+                    </div>
+                </div>
+
+                <div id="mistakeStatsSummary" style="margin-bottom: 20px; display:flex; gap:15px; flex-wrap:wrap;">
+                    <!-- Mistake summary badges -->
+                </div>
+
+                <div class="table-responsive">
+                    <table class="custom-table" id="mistakesTable">
+                        <thead>
+                            <tr>
+                                <th>Topic</th>
+                                <th>Question</th>
+                                <th>Your Answer</th>
+                                <th>Correct Answer</th>
+                                <th>Explanation</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mistakesTableBody">
+                            <tr><td colspan="6" style="text-align:center; color:#94a3b8;">Loading mistakes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. PROGRESS & STATISTICS VIEW -->
+        <div id="progress-view" class="view-section">
+            <div class="section-heading" style="margin-top:0;">
+                <div>
+                    <h3>Progress & Learning Analytics</h3>
+                    <small>Persistent historical records and adaptive learning mastery</small>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="primary-btn" style="background:#0284c7; display:inline-flex; align-items:center; gap:6px;" onclick="downloadPerformanceReportPdf()">
+                        <span>📄</span> Download Report (PDF)
+                    </button>
+                    <button class="secondary-btn" onclick="loadProgressData()">↺ Refresh Records</button>
+                </div>
+            </div>
+
+            <!-- Progress Stats Cards -->
+            <section class="stats" style="margin-bottom:20px;">
+                <div class="stat-card">
+                    <div class="stat-icon">🎓</div>
+                    <div class="label">Total Quizzes / Attempts</div>
+                    <h2 id="progress-total-quizzes">0</h2>
+                    <small>Saved in persistent database</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="label">Overall Accuracy</div>
+                    <h2 id="progress-overall-accuracy">0%</h2>
+                    <small>Across all sessions</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="label">Avg Response Time</div>
+                    <h2 id="progress-avg-time">0s</h2>
+                    <small>Average per question</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔠</div>
+                    <div class="label">Word Searches Solved</div>
+                    <h2 id="progress-puzzles-completed">0</h2>
+                    <small>Completed puzzles</small>
+                </div>
+            </section>
+
+            <!-- Historical Attempts Table with Search Filter -->
+            <div class="panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h3>Complete Chronological Attempt History</h3>
+                        <p class="panel-subtitle" style="margin-bottom:0;">Full audit log of questions answered in quizzes</p>
+                    </div>
+                    <input type="text" id="historySearchInput" placeholder="🔍 Search history by topic or question..." oninput="filterHistoryRealtime()" class="filter-input" style="width:260px;">
+                </div>
+                <div class="table-responsive">
+                    <table class="custom-table" id="progressHistoryTable">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Topic</th>
+                                <th>Question</th>
+                                <th>Difficulty</th>
+                                <th>Your Answer</th>
+                                <th>Correctness</th>
+                                <th>Response Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="progressHistoryTableBody">
+                            <tr><td colspan="7" style="text-align:center; color:#94a3b8;">Loading historical records...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. TEACHER STUDENTS MANAGEMENT VIEW -->
+        <div id="students-view" class="view-section">
+            <div class="panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h3>Enrolled Students Performance Overview</h3>
+                        <p class="panel-subtitle" style="margin-bottom:0;">Track individual student progress, topic mastery, and diagnostic metrics</p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" id="studentSearchInput" placeholder="🔍 Search students..." oninput="filterStudentsTable()" class="filter-input" style="width:220px;">
+                        <button class="secondary-btn" onclick="loadTeacherStudents()">↺ Refresh</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="custom-table" id="studentsTable">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Quizzes</th>
+                                <th>Attempts</th>
+                                <th>Accuracy</th>
+                                <th>Puzzles</th>
+                                <th>Strongest Topic</th>
+                                <th>Weakest Topic</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <tr><td colspan="10" style="text-align:center; color:#94a3b8;">Loading student records...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- ==========================================
+     MODALS & DIALOGS
+     ========================================== -->
+
+<!-- 1. FULL AUTHENTICATION OVERLAY (LOGIN / REGISTER) -->
+<div id="authOverlay" class="auth-overlay">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>SMART <span>ADAPTIVE QUIZ</span></h2>
+            <p>Personalized Multi-User Educational Platform</p>
+        </div>
+
+        <div class="auth-tabs">
+            <div class="auth-tab active" id="tabLoginBtn" onclick="switchAuthTab('login')">Sign In</div>
+            <div class="auth-tab" id="tabRegisterBtn" onclick="switchAuthTab('register')">Register</div>
+        </div>
+
+        <div class="auth-body">
+            <!-- LOGIN FORM -->
+            <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+                <div id="loginAlert" class="auth-alert alert-error"></div>
+
+                <div class="auth-input-group">
+                    <label class="auth-label">Username:</label>
+                    <input type="text" id="loginUsername" class="auth-input" placeholder="e.g. student or teacher" required autocomplete="username">
+                </div>
+
+                <div class="auth-input-group">
+                    <label class="auth-label">Password:</label>
+                    <input type="password" id="loginPassword" class="auth-input" placeholder="Enter your password" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" id="loginSubmitBtn" class="primary-btn" style="width:100%; justify-content:center; padding:12px; margin-top:8px;">
+                    Sign In →
+                </button>
+
+                <!-- Quick Test Demo Chips -->
+                <div class="auth-demo-chips">
+                    <strong>Quick Test Accounts:</strong><br>
+                    <span class="demo-chip" onclick="fillLogin('student', 'student123')">Student: student / student123</span>
+                    <span class="demo-chip" onclick="fillLogin('teacher', 'teacher123')">Teacher: teacher / teacher123</span>
+                </div>
+            </form>
+
+            <!-- REGISTER FORM -->
+            <form id="registerForm" onsubmit="handleRegisterSubmit(event)" style="display:none;">
+                <div id="registerAlert" class="auth-alert"></div>
+
+                <div class="auth-input-group">
+                    <label class="auth-label">Full Name:</label>
+                    <input type="text" id="regFullName" class="auth-input" placeholder="e.g. Alex Johnson" required>
+                </div>
+
+                <div class="auth-input-group">
+                    <label class="auth-label">Username (Unique, Case-Insensitive):</label>
+                    <input type="text" id="regUsername" class="auth-input" placeholder="Choose a username" required autocomplete="username">
+                </div>
+
+                <div class="auth-input-group">
+                    <label class="auth-label">Email Address (Optional):</label>
+                    <input type="email" id="regEmail" class="auth-input" placeholder="name@institution.edu">
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div class="auth-input-group">
+                        <label class="auth-label">Password:</label>
+                        <input type="password" id="regPassword" class="auth-input" placeholder="Min 4 chars" required autocomplete="new-password">
+                    </div>
+                    <div class="auth-input-group">
+                        <label class="auth-label">Confirm Password:</label>
+                        <input type="password" id="regConfirmPassword" class="auth-input" placeholder="Re-type password" required autocomplete="new-password">
+                    </div>
+                </div>
+
+                <div class="auth-input-group">
+                    <label class="auth-label">Account Role:</label>
+                    <div class="auth-radio-group">
+                        <div class="auth-radio-card active" id="roleCardStudent" onclick="selectRegRole('STUDENT')">
+                            <input type="radio" name="regRole" value="STUDENT" checked style="display:none;">
+                            <span>🎓 Student</span>
+                        </div>
+                        <div class="auth-radio-card" id="roleCardTeacher" onclick="selectRegRole('TEACHER')">
+                            <input type="radio" name="regRole" value="TEACHER" style="display:none;">
+                            <span>👨‍🏫 Teacher</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teacher Passcode slide-down field -->
+                <div class="auth-input-group" id="teacherPasscodeGroup" style="display:none;">
+                    <label class="auth-label" style="color:#b45309;">Teacher Authorization Passcode:</label>
+                    <input type="password" id="regTeacherCode" class="auth-input" placeholder="Enter teacher passcode (TEACHER2026)" style="border-color:#f59e0b;">
+                    <small style="color:#78350f; font-size:11px;">Faculty passcode required for teacher role.</small>
+                </div>
+
+                <button type="submit" id="regSubmitBtn" class="primary-btn" style="width:100%; justify-content:center; padding:12px; margin-top:8px;">
+                    Create Account →
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. USER PROFILE MODAL -->
+<div id="userProfileModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2500; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:14px; width:92%; max-width:540px; padding:26px; box-shadow:0 15px 35px rgba(0,0,0,0.25); max-height:90vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="color:#17243b; font-size:19px; font-weight:700;">My Profile & Settings</h3>
+            <button class="secondary-btn" style="padding:4px 9px;" onclick="closeProfileModal()">✕</button>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:14px; padding:12px 16px; background:#f8fafc; border-radius:10px; margin-bottom:20px;">
+            <div class="avatar" id="profAvatarBig" style="width:48px; height:48px; font-size:20px;">U</div>
+            <div>
+                <strong id="profFullNameDisplay" style="font-size:16px; color:#0f172a; display:block;">Full Name</strong>
+                <span id="profUsernameDisplay" style="font-size:12px; color:#64748b;">@username</span>
+                <span id="profRoleBadge" class="role-badge" style="margin-left:6px;">STUDENT</span>
+            </div>
+        </div>
+
+        <div id="profileAlert" class="auth-alert"></div>
+
+        <form onsubmit="handleProfileUpdate(event)" style="margin-bottom:22px;">
+            <h4 style="font-size:14px; color:#1e293b; margin-bottom:10px; font-weight:700; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">Profile Information</h4>
+            <div class="auth-input-group">
+                <label class="auth-label">Full Name:</label>
+                <input type="text" id="profFullNameInput" class="auth-input" required>
+            </div>
+            <div class="auth-input-group">
+                <label class="auth-label">Email Address:</label>
+                <input type="email" id="profEmailInput" class="auth-input">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="auth-input-group">
+                    <label class="auth-label">Institution / Academy:</label>
+                    <input type="text" id="profInstitutionInput" class="auth-input">
+                </div>
+                <div class="auth-input-group">
+                    <label class="auth-label">Bio / Tagline:</label>
+                    <input type="text" id="profBioInput" class="auth-input">
+                </div>
+            </div>
+            <button type="submit" class="primary-btn" style="font-size:13px; padding:8px 16px;">Save Profile Changes</button>
+        </form>
+
+        <form onsubmit="handleChangePassword(event)" style="border-top:1px dashed #e2e8f0; padding-top:16px;">
+            <h4 style="font-size:14px; color:#1e293b; margin-bottom:10px; font-weight:700;">Change Password</h4>
+            <div id="passwordAlert" class="auth-alert"></div>
+            <div class="auth-input-group">
+                <label class="auth-label">Current Password:</label>
+                <input type="password" id="oldPasswordInput" class="auth-input" required>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="auth-input-group">
+                    <label class="auth-label">New Password:</label>
+                    <input type="password" id="newPasswordInput" class="auth-input" required minlength="4">
+                </div>
+                <div class="auth-input-group">
+                    <label class="auth-label">Confirm New Password:</label>
+                    <input type="password" id="confirmNewPasswordInput" class="auth-input" required minlength="4">
+                </div>
+            </div>
+            <button type="submit" class="secondary-btn" style="font-size:13px; padding:8px 16px;">Update Password</button>
+        </form>
+    </div>
+</div>
+
+<!-- 3. TEACHER STUDENT DETAILS INSPECTION MODAL -->
+<div id="studentDetailsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2200; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:14px; width:92%; max-width:700px; padding:26px; box-shadow:0 15px 35px rgba(0,0,0,0.25); max-height:88vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+                <h3 id="detailStudentName" style="color:#17243b; font-size:19px; font-weight:700;">Student Performance Summary</h3>
+                <span id="detailStudentUsername" style="color:#64748b; font-size:13px;">@username</span>
+            </div>
+            <button class="secondary-btn" style="padding:4px 9px;" onclick="closeStudentDetailsModal()">✕</button>
+        </div>
+
+        <!-- Student Metrics Cards -->
+        <div class="stats" style="grid-template-columns: repeat(3, 1fr); margin-bottom:20px;">
+            <div class="stat-card">
+                <div class="label">Attempts</div>
+                <h2 id="detailAttempts" style="font-size:22px;">0</h2>
+                <small>Total questions</small>
+            </div>
+            <div class="stat-card">
+                <div class="label">Accuracy</div>
+                <h2 id="detailAccuracy" style="font-size:22px;">0%</h2>
+                <small>Overall success rate</small>
+            </div>
+            <div class="stat-card">
+                <div class="label">Avg Time</div>
+                <h2 id="detailAvgTime" style="font-size:22px;">0s</h2>
+                <small>Per question</small>
+            </div>
+        </div>
+
+        <!-- Student Topic Breakdown Table -->
+        <h4 style="font-size:14px; color:#17243b; margin-bottom:8px; font-weight:700;">Topic-Wise Accuracy & Adaptive Difficulty</h4>
+        <div class="table-responsive" style="margin-bottom:20px;">
+            <table class="custom-table" id="detailTopicTable">
+                <thead>
+                    <tr>
+                        <th>Topic</th>
+                        <th>Attempts</th>
+                        <th>Correct</th>
+                        <th>Accuracy</th>
+                        <th>Difficulty</th>
+                    </tr>
+                </thead>
+                <tbody id="detailTopicTableBody">
+                    <tr><td colspan="5" style="text-align:center; color:#94a3b8;">No topic attempts yet.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Student Mistakes Summary -->
+        <h4 style="font-size:14px; color:#17243b; margin-bottom:8px; font-weight:700;">Mistakes & Diagnostic Records</h4>
+        <div id="detailMistakesContainer">
+            <!-- Mistakes rendered here -->
+        </div>
+    </div>
+</div>
+
+<!-- 4. TEACHER QUESTION EDIT MODAL -->
+<div id="editQuestionModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:12px; width:92%; max-width:550px; padding:25px; box-shadow:0 10px 30px rgba(0,0,0,0.25);">
+        <h3 style="margin-bottom:15px; color:#17243b; font-size:18px;">Edit Question Details</h3>
+        <input type="hidden" id="editQuestionId">
+        <div style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Question Text:</label>
+            <textarea id="editQuestionText" rows="3" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; font-family:inherit;"></textarea>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Correct Answer:</label>
+            <input type="text" id="editQuestionAnswer" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; font-family:inherit;">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div>
+                <label style="font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Topic:</label>
+                <input type="text" id="editQuestionTopic" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; font-family:inherit;">
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Difficulty:</label>
+                <select id="editQuestionDifficulty" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; font-family:inherit;">
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                </select>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="secondary-btn" onclick="closeEditModal()">Cancel</button>
+            <button class="primary-btn" onclick="saveEditedQuestion()">Save Changes ✓</button>
+        </div>
+    </div>
+</div>
+
+<!-- FLOATING TOAST -->
+<div id="toast"></div>
+
+<!-- APPLICATION JAVASCRIPT -->
+<script>
+// ==========================================
+// GLOBAL STATE & AUTHENTICATION
+// ==========================================
+let currentUser = null;
+let currentView = 'dashboard-view';
+let accuracyChartInstance = null;
+let activeResumeTarget = null;
+
+// Cached datasets for client-side search & filtering
+let cachedDocuments = [];
+let cachedReviewQuestions = [];
+let cachedMistakes = [];
+let cachedHistory = [];
+let cachedActivities = [];
+let cachedStudents = [];
+
+// Quiz State
+let currentQuizSession = {
+    sessionId: null,
+    currentQuestion: null,
+    selectedAnswer: null,
+    confidence: 'MEDIUM',
+    timerSeconds: 0,
+    timerInterval: null
+};
+
+// Word Search State
+let currentPuzzleState = {
+    puzzleId: null,
+    sessionToken: null,
+    size: 0,
+    grid: [],
+    totalQuestions: 0,
+    currentQuestionIndex: 0,
+    currentQuestion: null,
+    completedCount: 0,
+    completedWords: [],
+    foundCoordinates: new Set(),
+    timerSeconds: 0,
+    timerInterval: null,
+    isDragging: false,
+    selectionStart: null,
+    selectedCells: []
+};
+
+// ==========================================
+// AUTHENTICATED FETCH WRAPPER
+// ==========================================
+async function authFetch(url, options = {}) {
+    options.headers = options.headers || {};
+    const token = sessionStorage.getItem('smart_quiz_token') || localStorage.getItem('smart_quiz_token');
+    if (token) {
+        options.headers['X-Auth-Token'] = token;
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+    if (!options.headers['Content-Type'] && !(options.body instanceof FormData)) {
+        options.headers['Content-Type'] = 'application/json';
+    }
+    const response = await fetch(url, options);
+    if (response.status === 401) {
+        showAuthOverlay('Please sign in to continue.');
+    }
+    return response;
+}
+
+// ==========================================
+// AUTHENTICATION & SESSION MANAGEMENT
+// ==========================================
+async function checkSession() {
+    const token = sessionStorage.getItem('smart_quiz_token') || localStorage.getItem('smart_quiz_token');
+    if (!token) {
+        showAuthOverlay();
+        return;
+    }
+    try {
+        const res = await fetch('/api/auth/me', {
+            headers: { 'X-Auth-Token': token, 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+            const user = await res.json();
+            setCurrentUser(user, token);
+            hideAuthOverlay();
+            initializeUserApp();
+        } else {
+            showAuthOverlay();
+        }
+    } catch (e) {
+        showAuthOverlay();
+    }
+}
+
+function showAuthOverlay(alertMsg) {
+    const overlay = document.getElementById('authOverlay');
+    overlay.style.display = 'flex';
+    if (alertMsg) {
+        const alertBox = document.getElementById('loginAlert');
+        alertBox.textContent = alertMsg;
+        alertBox.style.display = 'block';
+    }
+}
+
+function hideAuthOverlay() {
+    document.getElementById('authOverlay').style.display = 'none';
+}
+
+function switchAuthTab(tab) {
+    const tabLogin = document.getElementById('tabLoginBtn');
+    const tabReg = document.getElementById('tabRegisterBtn');
+    const loginForm = document.getElementById('loginForm');
+    const regForm = document.getElementById('registerForm');
+    document.getElementById('loginAlert').style.display = 'none';
+    document.getElementById('registerAlert').style.display = 'none';
+
+    if (tab === 'login') {
+        tabLogin.classList.add('active');
+        tabReg.classList.remove('active');
+        loginForm.style.display = 'block';
+        regForm.style.display = 'none';
+    } else {
+        tabReg.classList.add('active');
+        tabLogin.classList.remove('active');
+        loginForm.style.display = 'none';
+        regForm.style.display = 'block';
+    }
+}
+
+function fillLogin(u, p) {
+    document.getElementById('loginUsername').value = u;
+    document.getElementById('loginPassword').value = p;
+}
+
+let selectedRoleValue = 'STUDENT';
+function selectRegRole(role) {
+    selectedRoleValue = role;
+    const cardStud = document.getElementById('roleCardStudent');
+    const cardTeach = document.getElementById('roleCardTeacher');
+    const passcodeGroup = document.getElementById('teacherPasscodeGroup');
+
+    if (role === 'TEACHER') {
+        cardTeach.classList.add('active');
+        cardStud.classList.remove('active');
+        passcodeGroup.style.display = 'block';
+    } else {
+        cardStud.classList.add('active');
+        cardTeach.classList.remove('active');
+        passcodeGroup.style.display = 'none';
+    }
+}
+
+async function handleLoginSubmit(event) {
+    event.preventDefault();
+    const alertBox = document.getElementById('loginAlert');
+    alertBox.style.display = 'none';
+    const submitBtn = document.getElementById('loginSubmitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in...';
+
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.message || 'Invalid username or password.');
+        }
+
+        sessionStorage.setItem('smart_quiz_token', data.token);
+        localStorage.setItem('smart_quiz_token', data.token);
+        setCurrentUser(data.user, data.token);
+        hideAuthOverlay();
+        showMessage(`Welcome back, ${data.user.fullName || data.user.username}! 👋`);
+        initializeUserApp();
+
+    } catch (err) {
+        alertBox.textContent = err.message;
+        alertBox.style.display = 'block';
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In →';
+    }
+}
+
+async function handleRegisterSubmit(event) {
+    event.preventDefault();
+    const alertBox = document.getElementById('registerAlert');
+    alertBox.style.display = 'none';
+    alertBox.className = 'auth-alert alert-error';
+
+    const fullName = document.getElementById('regFullName').value.trim();
+    const username = document.getElementById('regUsername').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const confirmPassword = document.getElementById('regConfirmPassword').value;
+    const teacherPasscode = document.getElementById('regTeacherCode').value.trim();
+
+    if (password !== confirmPassword) {
+        alertBox.textContent = 'Passwords do not match.';
+        alertBox.style.display = 'block';
+        return;
+    }
+
+    const submitBtn = document.getElementById('regSubmitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating account...';
+
+    const payload = {
+        fullName,
+        username,
+        email: email || null,
+        password,
+        role: selectedRoleValue,
+        teacherPasscode: selectedRoleValue === 'TEACHER' ? teacherPasscode : null
+    };
+
+    try {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.message || 'Registration failed.');
+        }
+
+        sessionStorage.setItem('smart_quiz_token', data.token);
+        localStorage.setItem('smart_quiz_token', data.token);
+        setCurrentUser(data.user, data.token);
+        hideAuthOverlay();
+        showMessage(`Registration successful! Welcome, ${data.user.fullName}! 🎉`);
+        initializeUserApp();
+
+    } catch (err) {
+        alertBox.textContent = err.message;
+        alertBox.style.display = 'block';
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account →';
+    }
+}
+
+function setCurrentUser(user, token) {
+    currentUser = user;
+    const avatarChar = user.avatarInitial || (user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U');
+    document.getElementById('topbar-avatar').textContent = avatarChar;
+    document.getElementById('topbar-name').textContent = user.fullName || user.username;
+    document.getElementById('topbar-username').textContent = '@' + user.username;
+
+    const badge = document.getElementById('topbar-role-badge');
+    badge.textContent = user.role;
+    if (user.role === 'TEACHER') {
+        badge.className = 'role-badge role-teacher';
+    } else {
+        badge.className = 'role-badge';
+    }
+
+    applyRoleNavigation(user.role);
+}
+
+function applyRoleNavigation(role) {
+    const studentNavs = document.querySelectorAll('.student-nav');
+    const teacherNavs = document.querySelectorAll('.teacher-nav');
+    const studentTitle = document.getElementById('nav-student-title');
+    const teacherTitle = document.getElementById('nav-teacher-title');
+
+    if (role === 'TEACHER') {
+        studentNavs.forEach(el => el.style.display = 'none');
+        if (studentTitle) studentTitle.style.display = 'none';
+        teacherNavs.forEach(el => el.style.display = 'flex');
+        if (teacherTitle) teacherTitle.style.display = 'block';
+
+        if (currentView === 'dashboard-view' || currentView === 'adaptive-view' || currentView === 'puzzle-view' || currentView === 'mistake-view' || currentView === 'progress-view') {
+            switchView('upload-view', document.getElementById('nav-upload'));
+        }
+    } else {
+        studentNavs.forEach(el => el.style.display = 'flex');
+        if (studentTitle) studentTitle.style.display = 'block';
+        teacherNavs.forEach(el => el.style.display = 'none');
+        if (teacherTitle) teacherTitle.style.display = 'none';
+
+        if (currentView === 'upload-view' || currentView === 'review-view' || currentView === 'students-view') {
+            switchView('dashboard-view', document.getElementById('nav-dashboard'));
+        }
+    }
+}
+
+function initializeUserApp() {
+    if (!currentUser) return;
+    if (currentUser.role === 'TEACHER') {
+        loadUploadedDocuments();
+        loadQuestionsForReview();
+    } else {
+        loadDashboardData();
+        checkActiveSessions();
+    }
+}
+
+async function logout() {
+    try {
+        await authFetch('/api/auth/logout', { method: 'POST' });
+    } catch (ignored) {}
+    sessionStorage.removeItem('smart_quiz_token');
+    localStorage.removeItem('smart_quiz_token');
+    currentUser = null;
+    currentQuizSession.sessionId = null;
+    currentPuzzleState.sessionToken = null;
+    showAuthOverlay('You have been signed out.');
+}
+
+// ==========================================
+// ACTIVE LEARNING SESSIONS & RESUMPTION
+// ==========================================
+async function checkActiveSessions() {
+    try {
+        const res = await authFetch('/api/users/active-sessions');
+        if (!res.ok) return;
+        const sessions = await res.json();
+        const banner = document.getElementById('active-session-banner');
+        if (sessions && sessions.length > 0) {
+            activeResumeTarget = sessions[0];
+            const typeLabel = activeResumeTarget.sessionType === 'QUIZ' ? 'Adaptive Quiz' : 'Word Search Puzzle';
+            document.getElementById('active-session-desc').textContent =
+                `You have an active in-progress ${typeLabel} on "${escapeHtml(activeResumeTarget.topic || 'General')}" (${activeResumeTarget.completedQuestions || 0} questions completed).`;
+            banner.style.display = 'flex';
+        } else {
+            banner.style.display = 'none';
+        }
+    } catch (e) {
+        console.error('Error checking active sessions:', e);
+    }
+}
+
+function dismissActiveSession() {
+    document.getElementById('active-session-banner').style.display = 'none';
+}
+
+async function resumeActiveSession() {
+    if (!activeResumeTarget) return;
+    dismissActiveSession();
+    showMessage("Resuming your in-progress session...");
+
+    if (activeResumeTarget.sessionType === 'QUIZ') {
+        currentQuizSession.sessionId = activeResumeTarget.sessionId;
+        switchView('adaptive-view', document.getElementById('nav-adaptive'));
+        try {
+            const res = await authFetch(`/api/quiz/${activeResumeTarget.sessionId}/next`);
+            if (res.ok) {
+                const q = await res.json();
+                if (!q.completed) {
+                    displayQuizQuestion(q);
+                    startQuizTimer();
+                    return;
+                }
+            }
+        } catch (e) {}
+        startAdaptiveQuiz();
+    } else {
+        currentPuzzleState.sessionToken = activeResumeTarget.sessionId;
+        switchView('puzzle-view', document.getElementById('nav-puzzle'));
+        try {
+            const res = await authFetch(`/api/wordsearch/${activeResumeTarget.sessionId}/current-question`);
+            if (res.ok) {
+                const qData = await res.json();
+                if (qData && qData.currentQuestion) {
+                    displayCurrentPuzzleQuestion();
+                    return;
+                }
+            }
+        } catch (e) {}
+        startWordSearchPuzzle();
+    }
+}
+
+// ==========================================
+// USER PROFILE MODAL & PASSWORD MANAGEMENT
+// ==========================================
+function openProfileModal() {
+    if (!currentUser) return;
+    const modal = document.getElementById('userProfileModal');
+    modal.style.display = 'flex';
+
+    const avatarChar = currentUser.avatarInitial || (currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U');
+    document.getElementById('profAvatarBig').textContent = avatarChar;
+    document.getElementById('profFullNameDisplay').textContent = currentUser.fullName || currentUser.username;
+    document.getElementById('profUsernameDisplay').textContent = '@' + currentUser.username;
+    document.getElementById('profRoleBadge').textContent = currentUser.role;
+
+    document.getElementById('profFullNameInput').value = currentUser.fullName || '';
+    document.getElementById('profEmailInput').value = currentUser.email || '';
+    document.getElementById('profInstitutionInput').value = currentUser.institution || '';
+    document.getElementById('profBioInput').value = currentUser.bio || '';
+
+    document.getElementById('profileAlert').style.display = 'none';
+    document.getElementById('passwordAlert').style.display = 'none';
+}
+
+function closeProfileModal() {
+    document.getElementById('userProfileModal').style.display = 'none';
+}
+
+async function handleProfileUpdate(event) {
+    event.preventDefault();
+    const alertBox = document.getElementById('profileAlert');
+    alertBox.style.display = 'none';
+
+    const fullName = document.getElementById('profFullNameInput').value.trim();
+    const email = document.getElementById('profEmailInput').value.trim();
+    const institution = document.getElementById('profInstitutionInput').value.trim();
+    const bio = document.getElementById('profBioInput').value.trim();
+
+    try {
+        const res = await authFetch('/api/users/profile', {
+            method: 'PUT',
+            body: JSON.stringify({ fullName, email, institution, bio })
+        });
+        const updated = await res.json();
+        if (!res.ok) throw new Error(updated.error || 'Failed to update profile');
+
+        currentUser = updated;
+        setCurrentUser(updated, sessionStorage.getItem('smart_quiz_token'));
+        alertBox.className = 'auth-alert alert-success';
+        alertBox.textContent = 'Profile updated successfully!';
+        alertBox.style.display = 'block';
+        showMessage('Profile changes saved ✓');
+    } catch (e) {
+        alertBox.className = 'auth-alert alert-error';
+        alertBox.textContent = e.message;
+        alertBox.style.display = 'block';
+    }
+}
+
+async function handleChangePassword(event) {
+    event.preventDefault();
+    const alertBox = document.getElementById('passwordAlert');
+    alertBox.style.display = 'none';
+
+    const oldPassword = document.getElementById('oldPasswordInput').value;
+    const newPassword = document.getElementById('newPasswordInput').value;
+    const confirmNewPassword = document.getElementById('confirmNewPasswordInput').value;
+
+    if (newPassword !== confirmNewPassword) {
+        alertBox.className = 'auth-alert alert-error';
+        alertBox.textContent = 'New passwords do not match.';
+        alertBox.style.display = 'block';
+        return;
+    }
+
+    try {
+        const res = await authFetch('/api/users/change-password', {
+            method: 'PUT',
+            body: JSON.stringify({ oldPassword, newPassword })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to change password');
+
+        alertBox.className = 'auth-alert alert-success';
+        alertBox.textContent = 'Password changed successfully!';
+        alertBox.style.display = 'block';
+        document.getElementById('oldPasswordInput').value = '';
+        document.getElementById('newPasswordInput').value = '';
+        document.getElementById('confirmNewPasswordInput').value = '';
+        showMessage('Password changed successfully ✓');
+    } catch (e) {
+        alertBox.className = 'auth-alert alert-error';
+        alertBox.textContent = e.message;
+        alertBox.style.display = 'block';
+    }
+}
+
+// ==========================================
+// DOWNLOAD PERFORMANCE REPORT (PDF)
+// ==========================================
+async function downloadPerformanceReportPdf() {
+    try {
+        showMessage("Generating official PDF performance report...");
+        const token = sessionStorage.getItem('smart_quiz_token') || localStorage.getItem('smart_quiz_token');
+        const headers = {};
+        if (token) {
+            headers['X-Auth-Token'] = token;
+            headers['Authorization'] = 'Bearer ' + token;
+        }
+
+        const res = await fetch('/api/users/report/pdf', {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to generate PDF report');
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        const username = currentUser ? currentUser.username : 'Student';
+        a.download = `SmartQuiz_Report_${username}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        showMessage("PDF report downloaded successfully! 📄");
+    } catch (e) {
+        showMessage("Error downloading report: " + e.message);
+    }
+}
+
+// ==========================================
+// NAVIGATION & VIEW SWITCHER
+// ==========================================
+function switchView(viewId, element) {
+    // Role protection on client side
+    if (currentUser && currentUser.role === 'STUDENT') {
+        if (viewId === 'upload-view' || viewId === 'review-view' || viewId === 'students-view') {
+            showMessage("Access denied: Teacher permissions required.");
+            return;
+        }
+    }
+
+    document.querySelectorAll(".view-section").forEach(sec => sec.classList.remove("active-view"));
+    document.querySelectorAll(".nav-link").forEach(link => link.classList.remove("active"));
+
+    const targetView = document.getElementById(viewId);
+    if (targetView) targetView.classList.add("active-view");
+    if (element) element.classList.add("active");
+
+    const titles = {
+        'dashboard-view': ['Dashboard', 'Track your learning and improve your performance.'],
+        'upload-view': ['Upload PDF', 'Upload notes to generate questions and word searches.'],
+        'review-view': ['Question Review', 'Teacher review and approval before student release.'],
+        'puzzle-view': ['Word Search Puzzle', 'Search for key technical concepts extracted from notes.'],
+        'adaptive-view': ['Adaptive Quiz', 'Dynamic difficulty scaling based on your responses.'],
+        'mistake-view': ['Mistake Analyzer', 'Review errors, diagnostic hints, and retry questions.'],
+        'progress-view': ['Progress & Statistics', 'Review topic mastery and adaptive performance trends.'],
+        'students-view': ['Student Analytics', 'Review enrolled student progress, mastery, and diagnostic metrics.']
+    };
+
+    if (titles[viewId]) {
+        document.getElementById('page-title').textContent = titles[viewId][0];
+        document.getElementById('page-subtitle').textContent = titles[viewId][1];
+    }
+
+    currentView = viewId;
+
+    // View-specific data triggers
+    if (viewId === 'dashboard-view') { loadDashboardData(); checkActiveSessions(); }
+    if (viewId === 'upload-view') loadUploadedDocuments();
+    if (viewId === 'review-view') loadQuestionsForReview();
+    if (viewId === 'puzzle-view') {
+        if (!currentPuzzleState.sessionToken) startWordSearchPuzzle();
+    }
+    if (viewId === 'adaptive-view') {
+        if (!currentQuizSession.currentQuestion) startAdaptiveQuiz();
+    }
+    if (viewId === 'mistake-view') loadMistakes();
+    if (viewId === 'progress-view') loadProgressData();
+    if (viewId === 'students-view') loadTeacherStudents();
+}
+
+// ==========================================
+// TOAST NOTIFICATIONS
+// ==========================================
+let toastTimer;
+function showMessage(msg) {
+    const toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.style.display = "none"; }, 3200);
+}
+
+// ==========================================
+// 1. DASHBOARD MODULE
+// ==========================================
+async function loadDashboardData() {
+    try {
+        const res = await authFetch('/api/analytics/dashboard');
+        if (!res.ok) throw new Error('Failed to load dashboard stats');
+        const data = await res.json();
+
+        // Update Welcome Heading
+        if (data.fullName || data.studentName) {
+            document.getElementById('welcome-heading').textContent = `Welcome back, ${data.fullName || data.studentName}! 👋`;
+        }
+
+        // Update Stat Cards
+        document.getElementById('stat-total-attempts').textContent = data.totalQuestionsAttempted || 0;
+        document.getElementById('stat-accuracy').textContent = (data.overallAccuracy || 0) + '%';
+        document.getElementById('stat-accuracy-sub').textContent = `Based on ${data.totalQuestionsAttempted} attempts`;
+        document.getElementById('stat-avg-time').textContent = (data.averageResponseTimeSec || 0) + 's';
+        document.getElementById('stat-topics-count').textContent = data.totalTopicsPracticed || 0;
+        document.getElementById('stat-quizzes-completed').textContent = data.totalQuizzesCompleted || 0;
+        document.getElementById('stat-puzzles-completed').textContent = data.totalPuzzlesCompleted || 0;
+        document.getElementById('stat-strongest-topic').textContent = data.strongestTopic || 'None yet';
+        document.getElementById('stat-weakest-topic').textContent = data.weakestTopic || 'None yet';
+
+        // Render Topic Performance Progress Bars
+        renderTopicPerformances(data.topicPerformances || []);
+
+        // Render Answer Distribution Chart
+        renderAccuracyChart(data.correctAnswersCount || 0, data.incorrectAnswersCount || 0);
+
+        // Render Weak Topics Box
+        renderWeakTopics(data.weakTopics || [], data.strongTopics || []);
+
+        // Cache and Render Recent Activity Table
+        cachedActivities = data.recentActivity || [];
+        renderActivityTable(cachedActivities);
+
+    } catch (err) {
+        console.error('Error loading dashboard:', err);
+    }
+}
+
+function renderTopicPerformances(topics) {
+    const container = document.getElementById('topic-performance-list');
+    if (!topics || topics.length === 0) {
+        container.innerHTML = '<p style="color:#94a3b8; font-size:13px;">No topic attempts recorded yet.</p>';
+        return;
+    }
+
+    container.innerHTML = topics.map(t => {
+        let barColor = 'fill-green';
+        let badgeClass = 'badge-strong';
+        let badgeLabel = 'Strong';
+
+        if (t.accuracyPercentage < 60) {
+            barColor = 'fill-red';
+            badgeClass = 'badge-weak';
+            badgeLabel = 'Needs Work';
+        } else if (t.accuracyPercentage < 75) {
+            barColor = 'fill-orange';
+            badgeClass = 'badge-neutral';
+            badgeLabel = 'Moderate';
+        }
+
+        return `
+            <div class="topic-item">
+                <div class="topic-info">
+                    <span>${escapeHtml(t.topic)}</span>
+                    <div>
+                        <span class="badge ${badgeClass}" style="margin-right: 6px;">${badgeLabel}</span>
+                        <span style="color:#64748b; font-size:12px;">${t.correctQuestions}/${t.totalQuestions} (${t.accuracyPercentage}%)</span>
+                    </div>
+                </div>
+                <div class="topic-bar">
+                    <div class="topic-fill ${barColor}" style="width: ${Math.min(100, t.accuracyPercentage)}%;"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderAccuracyChart(correct, incorrect) {
+    const canvas = document.getElementById('accuracyChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (accuracyChartInstance) {
+        accuracyChartInstance.destroy();
+    }
+
+    if (correct === 0 && incorrect === 0) {
+        // Draw empty state
+        accuracyChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['No Data Yet'],
+                datasets: [{ data: [1], backgroundColor: ['#e2e8f0'], borderWidth: 0 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+        return;
+    }
+
+    accuracyChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Correct Answers', 'Incorrect Answers'],
+            datasets: [{
+                data: [correct, incorrect],
+                backgroundColor: ['#10b981', '#ef4444'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+}
+
+function renderWeakTopics(weak, strong) {
+    const box = document.getElementById('weak-topics-box');
+    if ((!weak || weak.length === 0) && (!strong || strong.length === 0)) {
+        box.innerHTML = '<p style="color:#94a3b8; font-size:13px;">Complete more adaptive quizzes to generate personalized diagnostic recommendations.</p>';
+        return;
+    }
+
+    let html = '';
+    if (weak && weak.length > 0) {
+        html += `
+            <div style="background:#fef2f2; border-left:4px solid #ef4444; padding:12px 16px; border-radius:8px; margin-bottom:12px;">
+                <strong style="color:#991b1b; font-size:13.5px;">⚠️ Topics Requiring Focus (<60% accuracy):</strong>
+                <p style="color:#7f1d1d; font-size:13px; margin-top:4px;">
+                    ${weak.map(t => `<span class="badge badge-weak" style="margin-right:6px;">${escapeHtml(t)}</span>`).join('')}
+                </p>
+                <small style="color:#b91c1c; display:block; margin-top:6px;">Recommendation: Review definition patterns in notes and attempt EASY questions to rebuild foundational mastery.</small>
+            </div>
+        `;
+    }
+    if (strong && strong.length > 0) {
+        html += `
+            <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:12px 16px; border-radius:8px;">
+                <strong style="color:#166534; font-size:13.5px;">🌟 Mastered Concepts (≥75% accuracy):</strong>
+                <p style="color:#14532d; font-size:13px; margin-top:4px;">
+                    ${strong.map(t => `<span class="badge badge-strong" style="margin-right:6px;">${escapeHtml(t)}</span>`).join('')}
+                </p>
+                <small style="color:#15803d; display:block; margin-top:6px;">Recommendation: Maintain momentum by attempting MEDIUM and HARD questions in these areas.</small>
+            </div>
+        `;
+    }
+    box.innerHTML = html;
+}
+
+function renderActivityTable(activities) {
+    const tbody = document.getElementById('activityTableBody');
+    if (!activities || activities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#94a3b8;">No recent activity records found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = activities.map(a => {
+        const timeStr = a.attemptTimestamp ? new Date(a.attemptTimestamp).toLocaleString() : 'Just now';
+        const resultPill = a.correct
+            ? `<span class="status-pill pill-correct">Correct ✓</span>`
+            : `<span class="status-pill pill-wrong">Incorrect ✕</span>`;
+        const diffPill = `<span class="status-pill pill-${(a.difficulty || 'EASY').toLowerCase()}">${a.difficulty || 'EASY'}</span>`;
+
+        return `
+            <tr>
+                <td style="white-space:nowrap; color:#64748b; font-size:12px;">${timeStr}</td>
+                <td><strong>${escapeHtml(a.topic || 'General')}</strong></td>
+                <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(a.questionText || '')}</td>
+                <td>${diffPill}</td>
+                <td>${escapeHtml(a.selectedAnswer || '-')}</td>
+                <td>${resultPill}</td>
+                <td style="font-weight:600;">${a.responseTimeSec || 0}s</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterActivityTable() {
+    const q = (document.getElementById('activitySearchInput').value || '').toLowerCase();
+    if (!q) {
+        renderActivityTable(cachedActivities);
+        return;
+    }
+    const filtered = cachedActivities.filter(a =>
+        (a.topic && a.topic.toLowerCase().includes(q)) ||
+        (a.questionText && a.questionText.toLowerCase().includes(q)) ||
+        (a.selectedAnswer && a.selectedAnswer.toLowerCase().includes(q))
+    );
+    renderActivityTable(filtered);
+}
+
+// ==========================================
+// 2. UPLOAD PDF MODULE (TEACHER ONLY)
+// ==========================================
+let selectedPdfFile = null;
+
+function onFileSelected(event) {
+    const file = event.target.files[0];
+    if (file) {
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            showMessage('Only PDF files are supported.');
+            return;
+        }
+        selectedPdfFile = file;
+        const label = document.getElementById('selectedFileLabel');
+        label.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        label.style.display = 'block';
+    }
+}
+
+function clearSelectedFile() {
+    selectedPdfFile = null;
+    document.getElementById('pdfFileInput').value = '';
+    const label = document.getElementById('selectedFileLabel');
+    label.textContent = '';
+    label.style.display = 'none';
+    document.getElementById('uploadResultBox').style.display = 'none';
+}
+
+// Drag & drop handlers
+const dropZone = document.getElementById('dropZone');
+if (dropZone) {
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#2862c4';
+        dropZone.style.background = '#f0f5fc';
+    });
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#b9cbe7';
+        dropZone.style.background = '#f8fafd';
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#b9cbe7';
+        dropZone.style.background = '#f8fafd';
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                selectedPdfFile = file;
+                const label = document.getElementById('selectedFileLabel');
+                label.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                label.style.display = 'block';
+            } else {
+                showMessage('Only PDF files are supported.');
+            }
+        }
+    });
+}
+
+async function uploadPdfDocument() {
+    if (!selectedPdfFile) {
+        showMessage('Please select an educational PDF file first.');
+        return;
+    }
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    const spinner = document.getElementById('uploadBtnSpinner');
+    const btnText = document.getElementById('uploadBtnText');
+    const resultBox = document.getElementById('uploadResultBox');
+
+    uploadBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+    btnText.textContent = 'Processing PDF with Apache PDFBox...';
+    resultBox.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedPdfFile);
+
+    try {
+        const response = await authFetch('/api/pdf/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            resultBox.className = 'quiz-feedback-box feedback-correct';
+            resultBox.innerHTML = `
+                <strong>✓ Document Processed Successfully!</strong><br>
+                <strong>File:</strong> ${escapeHtml(data.filename)} (${Math.round((data.fileSize || 0) / 1024)} KB)<br>
+                <strong>Sentences Extracted:</strong> ${data.sentenceCount}<br>
+                <strong>Questions Deterministically Generated:</strong> ${data.generatedQuestions}<br>
+                <div style="margin-top:10px;">
+                    <button class="primary-btn" onclick="switchView('review-view', document.getElementById('nav-review'))">Review & Approve Generated Questions →</button>
+                </div>
+            `;
+            resultBox.style.display = 'block';
+            showMessage(`Processed ${data.generatedQuestions} new questions!`);
+            clearSelectedFile();
+            loadUploadedDocuments();
+        } else {
+            throw new Error(data.error || 'Failed to process PDF.');
+        }
+    } catch (err) {
+        resultBox.className = 'quiz-feedback-box feedback-wrong';
+        resultBox.innerHTML = `<strong>Error Processing PDF:</strong> ${escapeHtml(err.message)}`;
+        resultBox.style.display = 'block';
+    } finally {
+        uploadBtn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Process & Generate Questions →';
+    }
+}
+
+async function loadUploadedDocuments() {
+    try {
+        const res = await authFetch('/api/pdf');
+        if (!res.ok) return;
+        cachedDocuments = await res.json();
+        renderDocumentsTable(cachedDocuments);
+    } catch (e) {
+        console.error('Error loading documents:', e);
+    }
+}
+
+function renderDocumentsTable(docs) {
+    const tbody = document.getElementById('documentsTableBody');
+    if (!docs || docs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8;">No uploaded documents yet.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = docs.map(d => `
+        <tr>
+            <td>#${d.id}</td>
+            <td><strong>${escapeHtml(d.filename)}</strong></td>
+            <td>${Math.round((d.fileSize || 0) / 1024)} KB</td>
+            <td>${d.sentenceCount || 0}</td>
+            <td><span class="badge badge-strong">${d.generatedQuestionCount || 0} questions</span></td>
+            <td><span class="status-pill pill-approved">${escapeHtml(d.status || 'PROCESSED')}</span></td>
+        </tr>
+    `).join('');
+}
+
+function filterDocumentsTable() {
+    const q = (document.getElementById('docSearchInput').value || '').toLowerCase();
+    if (!q) {
+        renderDocumentsTable(cachedDocuments);
+        return;
+    }
+    const filtered = cachedDocuments.filter(d =>
+        (d.filename && d.filename.toLowerCase().includes(q)) ||
+        (d.status && d.status.toLowerCase().includes(q))
+    );
+    renderDocumentsTable(filtered);
+}
+
+// ==========================================
+// 3. TEACHER QUESTION REVIEW MODULE
+// ==========================================
+let currentReviewFilter = 'ALL';
+
+async function loadQuestionsForReview() {
+    const container = document.getElementById('reviewQuestionsContainer');
+    container.innerHTML = '<p style="color:#94a3b8; padding:20px;">Loading questions for review...</p>';
+
+    try {
+        const res = await authFetch('/api/questions');
+        if (!res.ok) throw new Error('Failed to fetch questions');
+        cachedReviewQuestions = await res.json();
+        filterReviewQuestionsRealtime();
+    } catch (e) {
+        container.innerHTML = `<p style="color:#ef4444; padding:20px;">Error: ${escapeHtml(e.message)}</p>`;
+    }
+}
+
+function filterReviewQuestions(status, btn) {
+    currentReviewFilter = status;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active-filter'));
+    if (btn) btn.classList.add('active-filter');
+    filterReviewQuestionsRealtime();
+}
+
+function filterReviewQuestionsRealtime() {
+    const searchQ = (document.getElementById('reviewSearchInput').value || '').toLowerCase();
+    const diffFilter = document.getElementById('reviewDiffFilter').value;
+
+    let filtered = cachedReviewQuestions;
+
+    if (currentReviewFilter !== 'ALL') {
+        filtered = filtered.filter(q => q.approvalStatus === currentReviewFilter);
+    }
+    if (diffFilter !== 'ALL') {
+        filtered = filtered.filter(q => q.difficulty === diffFilter);
+    }
+    if (searchQ) {
+        filtered = filtered.filter(q =>
+            (q.questionText && q.questionText.toLowerCase().includes(searchQ)) ||
+            (q.topic && q.topic.toLowerCase().includes(searchQ)) ||
+            (q.correctAnswer && q.correctAnswer.toLowerCase().includes(searchQ))
+        );
+    }
+
+    renderReviewQuestions(filtered);
+}
+
+function renderReviewQuestions(questions) {
+    const container = document.getElementById('reviewQuestionsContainer');
+    if (!questions || questions.length === 0) {
+        container.innerHTML = '<div class="panel" style="text-align:center; color:#94a3b8;">No questions found matching criteria.</div>';
+        return;
+    }
+
+    container.innerHTML = questions.map(q => {
+        const statusClass = q.approvalStatus === 'APPROVED' ? 'pill-approved' : (q.approvalStatus === 'REJECTED' ? 'pill-rejected' : 'pill-generated');
+        const diffClass = `pill-${(q.difficulty || 'EASY').toLowerCase()}`;
+
+        return `
+            <div class="review-card" id="q-card-${q.id}">
+                <div class="review-meta">
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span class="status-pill ${statusClass}">${q.approvalStatus}</span>
+                        <span class="status-pill ${diffClass}">${q.difficulty}</span>
+                        <span class="badge badge-neutral">${escapeHtml(q.topic || 'General')}</span>
+                        <span style="font-size:11px; color:#94a3b8;">Type: ${escapeHtml(q.questionType || 'MCQ')}</span>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <button class="secondary-btn" style="padding:6px 10px; font-size:11px;" onclick="openEditModal(${q.id})">✎ Edit</button>
+                        ${q.approvalStatus !== 'APPROVED' ? `<button class="success-btn" style="padding:6px 10px; font-size:11px;" onclick="approveQuestion(${q.id})">✓ Approve</button>` : ''}
+                        ${q.approvalStatus !== 'REJECTED' ? `<button class="danger-btn" style="padding:6px 10px; font-size:11px;" onclick="rejectQuestion(${q.id})">✕ Reject</button>` : ''}
+                    </div>
+                </div>
+
+                <div style="font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 8px;">
+                    ${escapeHtml(q.questionText)}
+                </div>
+
+                <div style="font-size: 13.5px; color: #10b981; font-weight: 600; margin-bottom: 8px;">
+                    Target Answer: <span style="background:#ecfdf5; padding:2px 8px; border-radius:4px; border:1px solid #a7f3d0;">${escapeHtml(q.correctAnswer)}</span>
+                </div>
+
+                ${q.options && q.options.length > 0 ? `
+                    <div style="font-size: 12.5px; color: #64748b; margin-bottom: 8px;">
+                        <strong>Generated Distractors:</strong> ${q.options.map(o => escapeHtml(o)).join(' | ')}
+                    </div>
+                ` : ''}
+
+                ${q.sourceSentence ? `
+                    <div style="font-size: 12px; color: #64748b; font-style: italic; background:#f8fafc; padding:8px 12px; border-radius:6px;">
+                        " ${escapeHtml(q.sourceSentence)} "
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+async function approveQuestion(id) {
+    try {
+        const res = await authFetch(`/api/questions/${id}/approve`, { method: 'POST' });
+        if (!res.ok) throw new Error('Could not approve question.');
+        showMessage(`Question #${id} approved! Available for Word Search & Quiz.`);
+        loadQuestionsForReview();
+    } catch (e) {
+        showMessage('Error: ' + e.message);
+    }
+}
+
+async function rejectQuestion(id) {
+    try {
+        const res = await authFetch(`/api/questions/${id}/reject`, { method: 'POST' });
+        if (!res.ok) throw new Error('Could not reject question.');
+        showMessage(`Question #${id} rejected.`);
+        loadQuestionsForReview();
+    } catch (e) {
+        showMessage('Error: ' + e.message);
+    }
+}
+
+async function batchApproveSelected() {
+    try {
+        const pending = cachedReviewQuestions.filter(q => q.approvalStatus === 'GENERATED').map(q => q.id);
+        if (pending.length === 0) {
+            showMessage('No pending GENERATED questions to approve.');
+            return;
+        }
+
+        const postRes = await authFetch('/api/questions/batch-approve', {
+            method: 'POST',
+            body: JSON.stringify(pending)
+        });
+        if (!postRes.ok) throw new Error('Batch approval failed');
+
+        showMessage(`Approved ${pending.length} pending questions!`);
+        loadQuestionsForReview();
+    } catch (e) {
+        showMessage('Error: ' + e.message);
+    }
+}
+
+function openEditModal(id) {
+    const q = cachedReviewQuestions.find(item => item.id === id);
+    if (!q) return;
+
+    document.getElementById('editQuestionId').value = q.id;
+    document.getElementById('editQuestionText').value = q.questionText || '';
+    document.getElementById('editQuestionAnswer').value = q.correctAnswer || '';
+    document.getElementById('editQuestionTopic').value = q.topic || '';
+    document.getElementById('editQuestionDifficulty').value = q.difficulty || 'EASY';
+
+    const modal = document.getElementById('editQuestionModal');
+    modal.style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('editQuestionModal').style.display = 'none';
+}
+
+async function saveEditedQuestion() {
+    const id = document.getElementById('editQuestionId').value;
+    const text = document.getElementById('editQuestionText').value.trim();
+    const answer = document.getElementById('editQuestionAnswer').value.trim();
+    const topic = document.getElementById('editQuestionTopic').value.trim();
+    const difficulty = document.getElementById('editQuestionDifficulty').value;
+
+    if (!text || !answer || !topic) {
+        showMessage('Please fill out all question fields.');
+        return;
+    }
+
+    try {
+        const res = await authFetch(`/api/questions/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                questionText: text,
+                correctAnswer: answer,
+                topic: topic,
+                difficulty: difficulty
+            })
+        });
+
+        if (!res.ok) throw new Error('Failed to update question');
+
+        closeEditModal();
+        showMessage(`Question #${id} updated successfully!`);
+        loadQuestionsForReview();
+    } catch (e) {
+        showMessage('Error saving question: ' + e.message);
+    }
+}
+
+// ==========================================
+// 4. WORD SEARCH PUZZLE (QUESTION-BY-QUESTION)
+// ==========================================
+async function startWordSearchPuzzle() {
+    const gridEl = document.getElementById('wordGrid');
+    const qTextEl = document.getElementById('puzzleQuestionText');
+    const feedbackBox = document.getElementById('puzzleFeedbackBox');
+    const nextBtn = document.getElementById('puzzleNextBtn');
+    const playArea = document.getElementById('puzzlePlayArea');
+    const compCard = document.getElementById('puzzleCompletionCard');
+
+    playArea.style.display = 'grid';
+    compCard.style.display = 'none';
+    feedbackBox.style.display = 'none';
+    nextBtn.style.display = 'none';
+    document.getElementById('currentSelectionLive').textContent = '';
+
+    gridEl.innerHTML = '<p style="color:#94a3b8; padding:30px;">Generating word search puzzle grid...</p>';
+    qTextEl.textContent = 'Loading question...';
+
+    currentPuzzleState.foundCoordinates = new Set();
+    currentPuzzleState.completedWords = [];
+    currentPuzzleState.selectedCells = [];
+    currentPuzzleState.isDragging = false;
+
+    try {
+        const student = currentUser ? currentUser.username : 'Student';
+        const res = await authFetch(`/api/wordsearch/generate?studentName=${encodeURIComponent(student)}`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to create puzzle session');
+        const data = await res.json();
+
+        currentPuzzleState.puzzleId = data.puzzleId;
+        currentPuzzleState.sessionToken = data.sessionToken;
+        currentPuzzleState.size = data.size;
+        currentPuzzleState.grid = data.grid;
+        currentPuzzleState.totalQuestions = data.totalQuestions;
+        currentPuzzleState.currentQuestionIndex = data.currentQuestionIndex;
+        currentPuzzleState.currentQuestion = data.currentQuestion;
+        currentPuzzleState.completedCount = data.completedCount || 0;
+
+        renderWordSearchGrid(data.grid, data.size);
+        displayCurrentPuzzleQuestion();
+        renderQuestionTracker();
+        startPuzzleTimer();
+
+    } catch (e) {
+        gridEl.innerHTML = `<p style="color:#ef4444; padding:20px;">Error starting puzzle: ${escapeHtml(e.message)}</p>`;
+    }
+}
+
+function renderWordSearchGrid(grid, size) {
+    const gridEl = document.getElementById('wordGrid');
+    gridEl.style.gridTemplateColumns = `repeat(${size}, 40px)`;
+    gridEl.style.gridTemplateRows = `repeat(${size}, 40px)`;
+    gridEl.innerHTML = '';
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+            cell.dataset.char = grid[r][c];
+            cell.textContent = grid[r][c];
+
+            cell.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                handleCellMouseDown(r, c);
+            });
+
+            cell.addEventListener('mouseenter', () => {
+                if (currentPuzzleState.isDragging) {
+                    handleCellMouseEnter(r, c);
+                }
+            });
+
+            cell.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleCellMouseDown(r, c);
+            });
+
+            gridEl.appendChild(cell);
+        }
+    }
+
+    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener('touchend', handleDragEnd);
+}
+
+function handleCellMouseDown(r, c) {
+    currentPuzzleState.isDragging = true;
+    currentPuzzleState.selectionStart = { r, c };
+    updateSelectionHighlight([{ row: r, col: c }]);
+}
+
+function handleCellMouseEnter(r, c) {
+    if (!currentPuzzleState.isDragging || !currentPuzzleState.selectionStart) return;
+    const start = currentPuzzleState.selectionStart;
+    const lineCells = getStraightLineCells(start.r, start.c, r, c);
+    if (lineCells) {
+        updateSelectionHighlight(lineCells);
+    }
+}
+
+function handleDragEnd() {
+    if (!currentPuzzleState.isDragging) return;
+    currentPuzzleState.isDragging = false;
+    if (currentPuzzleState.selectedCells.length > 0) {
+        validateWordSearchSelection();
+    }
+}
+
+function getStraightLineCells(r1, c1, r2, c2) {
+    const dr = r2 - r1;
+    const dc = c2 - c1;
+
+    const stepR = dr === 0 ? 0 : (dr > 0 ? 1 : -1);
+    const stepC = dc === 0 ? 0 : (dc > 0 ? 1 : -1);
+
+    const lenR = Math.abs(dr);
+    const lenC = Math.abs(dc);
+
+    if (lenR !== 0 && lenC !== 0 && lenR !== lenC) {
+        return null;
+    }
+
+    const steps = Math.max(lenR, lenC);
+    const cells = [];
+    let curR = r1;
+    let curC = c1;
+
+    for (let i = 0; i <= steps; i++) {
+        cells.push({ row: curR, col: curC });
+        curR += stepR;
+        curC += stepC;
+    }
+    return cells;
+}
+
+function updateSelectionHighlight(coordList) {
+    document.querySelectorAll('.grid-cell').forEach(c => {
+        const key = `${c.dataset.row},${c.dataset.col}`;
+        if (currentPuzzleState.foundCoordinates.has(key)) {
+            c.className = 'grid-cell found';
+        } else {
+            c.className = 'grid-cell';
+        }
+    });
+
+    let liveStr = '';
+    coordList.forEach(item => {
+        const cell = document.querySelector(`.grid-cell[data-row="${item.row}"][data-col="${item.col}"]`);
+        if (cell) {
+            cell.classList.add('selected');
+            liveStr += cell.dataset.char;
+        }
+    });
+
+    currentPuzzleState.selectedCells = coordList;
+    document.getElementById('currentSelectionLive').textContent = liveStr;
+}
+
+function clearLetterSelection() {
+    currentPuzzleState.selectedCells = [];
+    currentPuzzleState.isDragging = false;
+    document.getElementById('currentSelectionLive').textContent = '';
+    updateSelectionHighlight([]);
+}
+
+function displayCurrentPuzzleQuestion() {
+    const q = currentPuzzleState.currentQuestion;
+    const qNumBadge = document.getElementById('puzzleQuestionNumBadge');
+    const topicBadge = document.getElementById('puzzleTopicBadge');
+    const qTextEl = document.getElementById('puzzleQuestionText');
+    const feedbackBox = document.getElementById('puzzleFeedbackBox');
+    const nextBtn = document.getElementById('puzzleNextBtn');
+
+    feedbackBox.style.display = 'none';
+    nextBtn.style.display = 'none';
+    document.getElementById('currentSelectionLive').textContent = '';
+
+    if (!q) {
+        qTextEl.textContent = 'All questions completed!';
+        return;
+    }
+
+    qNumBadge.textContent = `Question ${currentPuzzleState.currentQuestionIndex + 1} of ${currentPuzzleState.totalQuestions}`;
+    topicBadge.textContent = `Topic: ${q.topic || 'General'}`;
+    qTextEl.textContent = q.questionText;
+
+    const progressPct = Math.round((currentPuzzleState.completedCount / currentPuzzleState.totalQuestions) * 100);
+    document.getElementById('puzzleProgressText').textContent = `${currentPuzzleState.completedCount} / ${currentPuzzleState.totalQuestions} (${progressPct}%)`;
+    document.getElementById('puzzleProgressBar').style.width = `${progressPct}%`;
+}
+
+function renderQuestionTracker() {
+    const tracker = document.getElementById('puzzleQuestionTracker');
+    let html = '';
+    for (let i = 0; i < currentPuzzleState.totalQuestions; i++) {
+        const isDone = i < currentPuzzleState.completedCount;
+        const isCurrent = i === currentPuzzleState.currentQuestionIndex && !isDone;
+
+        let icon = '○';
+        let style = 'color:#94a3b8;';
+        if (isDone) {
+            icon = '✓';
+            style = 'color:#10b981; font-weight:700;';
+        } else if (isCurrent) {
+            icon = '▶';
+            style = 'color:#28599b; font-weight:700;';
+        }
+
+        html += `
+            <div style="font-size:12.5px; display:flex; align-items:center; gap:8px; padding:6px 10px; background:#f8fafc; border-radius:6px; ${style}">
+                <span>${icon}</span>
+                <span>Question ${i + 1}</span>
+                ${isDone ? '<span class="status-pill pill-correct" style="margin-left:auto; font-size:10px;">Solved</span>' : ''}
+            </div>
+        `;
+    }
+    tracker.innerHTML = html;
+}
+
+async function validateWordSearchSelection() {
+    const feedbackBox = document.getElementById('puzzleFeedbackBox');
+    const nextBtn = document.getElementById('puzzleNextBtn');
+
+    if (!currentPuzzleState.selectedCells || currentPuzzleState.selectedCells.length < 2) {
+        return;
+    }
+
+    let spelled = '';
+    currentPuzzleState.selectedCells.forEach(c => {
+        const cell = document.querySelector(`.grid-cell[data-row="${c.row}"][data-col="${c.col}"]`);
+        if (cell) spelled += cell.dataset.char;
+    });
+
+    const payload = {
+        puzzleId: currentPuzzleState.puzzleId,
+        sessionToken: currentPuzzleState.sessionToken,
+        selectedWord: spelled,
+        coordinates: currentPuzzleState.selectedCells
+    };
+
+    try {
+        const res = await authFetch('/api/wordsearch/validate', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (data.correct) {
+            feedbackBox.className = 'quiz-feedback-box feedback-correct';
+            feedbackBox.innerHTML = `<strong>✓ Correct Answer!</strong> You found <strong>${escapeHtml(data.foundWord)}</strong>.`;
+            feedbackBox.style.display = 'block';
+
+            if (data.coordinates) {
+                data.coordinates.forEach(c => {
+                    currentPuzzleState.foundCoordinates.add(`${c.row},${c.col}`);
+                    const cell = document.querySelector(`.grid-cell[data-row="${c.row}"][data-col="${c.col}"]`);
+                    if (cell) cell.className = 'grid-cell found';
+                });
+            }
+
+            currentPuzzleState.completedCount = data.completedCount;
+            currentPuzzleState.currentQuestionIndex = data.currentQuestionIndex;
+            renderQuestionTracker();
+
+            if (data.puzzleCompleted) {
+                stopPuzzleTimer();
+                setTimeout(() => showPuzzleCompletionSummary(data.completionStats), 1200);
+            } else {
+                currentPuzzleState.nextPendingQuestion = data.nextQuestion;
+                nextBtn.style.display = 'inline-flex';
+                setTimeout(() => {
+                    loadNextPuzzleQuestion();
+                }, 1600);
+            }
+        } else {
+            feedbackBox.className = 'quiz-feedback-box feedback-wrong';
+            feedbackBox.innerHTML = `<strong>✕ Wrong Answer! Try Again.</strong> ${escapeHtml(data.message || 'The selected letters do not match the current question.')}`;
+            feedbackBox.style.display = 'block';
+
+            currentPuzzleState.selectedCells.forEach(c => {
+                const cell = document.querySelector(`.grid-cell[data-row="${c.row}"][data-col="${c.col}"]`);
+                if (cell && !currentPuzzleState.foundCoordinates.has(`${c.row},${c.col}`)) {
+                    cell.classList.add('wrong-flash');
+                }
+            });
+
+            setTimeout(() => {
+                clearLetterSelection();
+            }, 800);
+
+            const errCountEl = document.getElementById('puzzleIncorrectCount');
+            if (errCountEl) {
+                errCountEl.textContent = parseInt(errCountEl.textContent || '0') + 1;
+            }
+        }
+
+    } catch (e) {
+        showMessage('Validation error: ' + e.message);
+    }
+}
+
+function loadNextPuzzleQuestion() {
+    if (currentPuzzleState.nextPendingQuestion) {
+        currentPuzzleState.currentQuestion = currentPuzzleState.nextPendingQuestion;
+        currentPuzzleState.nextPendingQuestion = null;
+    }
+    clearLetterSelection();
+    displayCurrentPuzzleQuestion();
+}
+
+function showPuzzleCompletionSummary(stats) {
+    document.getElementById('puzzlePlayArea').style.display = 'none';
+    const compCard = document.getElementById('puzzleCompletionCard');
+    compCard.style.display = 'block';
+
+    document.getElementById('compTotalQuestions').textContent = (stats && stats.totalQuestions) || currentPuzzleState.totalQuestions;
+    document.getElementById('compAccuracy').textContent = `${(stats && stats.accuracy) || 100}%`;
+    document.getElementById('compDuration').textContent = `${(stats && stats.durationSeconds) || currentPuzzleState.timerSeconds}s`;
+
+    showMessage('🎉 Congratulations! You completed the Word Search Puzzle!');
+}
+
+function startPuzzleTimer() {
+    stopPuzzleTimer();
+    currentPuzzleState.timerSeconds = 0;
+    const display = document.getElementById('puzzleTimerDisplay');
+    currentPuzzleState.timerInterval = setInterval(() => {
+        currentPuzzleState.timerSeconds++;
+        const mins = String(Math.floor(currentPuzzleState.timerSeconds / 60)).padStart(2, '0');
+        const secs = String(currentPuzzleState.timerSeconds % 60).padStart(2, '0');
+        display.textContent = `⏱️ ${mins}:${secs}`;
+    }, 1000);
+}
+
+function stopPuzzleTimer() {
+    if (currentPuzzleState.timerInterval) {
+        clearInterval(currentPuzzleState.timerInterval);
+        currentPuzzleState.timerInterval = null;
+    }
+}
+
+// ==========================================
+// 5. ADAPTIVE QUIZ MODULE
+// ==========================================
+async function startAdaptiveQuiz() {
+    const diffBadge = document.getElementById('quizDifficultyBadge');
+    const topicBadge = document.getElementById('quizTopicBadge');
+    const qText = document.getElementById('quizQuestionText');
+    const optionsList = document.getElementById('quizOptionsList');
+    const feedbackBox = document.getElementById('quizFeedbackBox');
+    const submitBtn = document.getElementById('submitAnswerBtn');
+    const nextBtn = document.getElementById('nextQuestionBtn');
+
+    feedbackBox.style.display = 'none';
+    submitBtn.style.display = 'inline-flex';
+    nextBtn.style.display = 'none';
+    currentQuizSession.selectedAnswer = null;
+
+    try {
+        const student = currentUser ? currentUser.username : 'Student';
+        const res = await authFetch(`/api/quiz/start?studentName=${encodeURIComponent(student)}`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to start quiz');
+        const session = await res.json();
+
+        currentQuizSession.sessionId = session.sessionId;
+        displayQuizQuestion(session.question);
+        startQuizTimer();
+
+    } catch (e) {
+        qText.textContent = 'Could not load quiz questions. Please make sure questions exist and are approved.';
+    }
+}
+
+function displayQuizQuestion(q) {
+    currentQuizSession.currentQuestion = q;
+    currentQuizSession.selectedAnswer = null;
+
+    const diffBadge = document.getElementById('quizDifficultyBadge');
+    const topicBadge = document.getElementById('quizTopicBadge');
+    const qText = document.getElementById('quizQuestionText');
+    const optionsList = document.getElementById('quizOptionsList');
+    const feedbackBox = document.getElementById('quizFeedbackBox');
+    const submitBtn = document.getElementById('submitAnswerBtn');
+    const nextBtn = document.getElementById('nextQuestionBtn');
+
+    feedbackBox.style.display = 'none';
+    submitBtn.style.display = 'inline-flex';
+    submitBtn.disabled = false;
+    nextBtn.style.display = 'none';
+
+    if (!q) {
+        qText.innerHTML = '🎉 <strong>Session Complete!</strong> You have answered all available adaptive questions in this bank.';
+        optionsList.innerHTML = '';
+        submitBtn.style.display = 'none';
+        stopQuizTimer();
+        return;
+    }
+
+    diffBadge.textContent = `Difficulty: ${q.difficulty}`;
+    diffBadge.className = `status-pill pill-${q.difficulty.toLowerCase()}`;
+    topicBadge.textContent = `Topic: ${q.topic}`;
+    qText.textContent = q.questionText;
+
+    if (q.questionType === 'FILL_IN_BLANK' || !q.options || q.options.length <= 1) {
+        optionsList.innerHTML = `
+            <div style="margin-top:10px;">
+                <input type="text" id="quizTextInput" placeholder="Type your answer here..."
+                    class="auth-input" style="font-size:15px; padding:12px 16px;"
+                    oninput="currentQuizSession.selectedAnswer = this.value">
+            </div>
+        `;
+    } else {
+        optionsList.innerHTML = q.options.map((opt, idx) => `
+            <div class="quiz-option" onclick="selectQuizOption('${escapeHtml(opt)}', this)">
+                <span style="font-weight:700; color:#28599b; width:22px;">${String.fromCharCode(65 + idx)}.</span>
+                <span>${escapeHtml(opt)}</span>
+            </div>
+        `).join('');
+    }
+}
+
+function selectQuizOption(value, element) {
+    currentQuizSession.selectedAnswer = value;
+    document.querySelectorAll('.quiz-option').forEach(el => el.classList.remove('selected'));
+    element.classList.add('selected');
+}
+
+function setConfidence(level, element) {
+    currentQuizSession.confidence = level;
+    document.querySelectorAll('.confidence-btn').forEach(btn => btn.classList.remove('active-conf'));
+    element.classList.add('active-conf');
+}
+
+function startQuizTimer() {
+    stopQuizTimer();
+    currentQuizSession.timerSeconds = 0;
+    const display = document.getElementById('quizTimerDisplay');
+    currentQuizSession.timerInterval = setInterval(() => {
+        currentQuizSession.timerSeconds++;
+        const mins = String(Math.floor(currentQuizSession.timerSeconds / 60)).padStart(2, '0');
+        const secs = String(currentQuizSession.timerSeconds % 60).padStart(2, '0');
+        display.textContent = `⏱️ ${mins}:${secs}`;
+    }, 1000);
+}
+
+function stopQuizTimer() {
+    if (currentQuizSession.timerInterval) {
+        clearInterval(currentQuizSession.timerInterval);
+        currentQuizSession.timerInterval = null;
+    }
+}
+
+async function submitQuizAnswer() {
+    if (!currentQuizSession.currentQuestion) return;
+
+    if (document.getElementById('quizTextInput')) {
+        currentQuizSession.selectedAnswer = document.getElementById('quizTextInput').value.trim();
+    }
+
+    if (!currentQuizSession.selectedAnswer) {
+        showMessage('Please choose or enter an answer before submitting.');
+        return;
+    }
+
+    const submitBtn = document.getElementById('submitAnswerBtn');
+    submitBtn.disabled = true;
+
+    try {
+        const student = currentUser ? currentUser.username : 'Student';
+        const payload = {
+            questionId: currentQuizSession.currentQuestion.id,
+            selectedAnswer: currentQuizSession.selectedAnswer,
+            responseTimeSec: currentQuizSession.timerSeconds,
+            confidence: currentQuizSession.confidence,
+            sessionId: currentQuizSession.sessionId,
+            studentName: student
+        };
+
+        const res = await authFetch('/api/quiz/submit', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Failed to submit answer');
+        }
+
+        const feedback = await res.json();
+        renderQuizFeedback(feedback);
+
+    } catch (e) {
+        showMessage('Error: ' + e.message);
+        submitBtn.disabled = false;
+    }
+}
+
+function renderQuizFeedback(feedback) {
+    const feedbackBox = document.getElementById('quizFeedbackBox');
+    const submitBtn = document.getElementById('submitAnswerBtn');
+    const nextBtn = document.getElementById('nextQuestionBtn');
+
+    submitBtn.style.display = 'none';
+
+    let diffChangeMsg = '';
+    if (feedback.difficultyChanged) {
+        if (feedback.newDifficulty === 'HARD' || (feedback.newDifficulty === 'MEDIUM' && feedback.previousDifficulty === 'EASY')) {
+            diffChangeMsg = `<div style="margin-top:8px; font-weight:700; color:#15803d;">🚀 Adaptive Level Up! Difficulty increased to ${feedback.newDifficulty} after 3 consecutive correct answers!</div>`;
+        } else {
+            diffChangeMsg = `<div style="margin-top:8px; font-weight:700; color:#b91c1c;">⚡ Adaptive Adjustment: Difficulty decreased to ${feedback.newDifficulty} after consecutive errors.</div>`;
+        }
+    }
+
+    let metaAlert = '';
+    if (feedback.misconceptionAlert) {
+        metaAlert = `<div style="margin-top:6px; color:#b91c1c; font-size:12.5px;">⚠️ Misconception Alert: You reported High Confidence on an incorrect answer. Review the explanation carefully!</div>`;
+    } else if (feedback.confidenceBoost) {
+        metaAlert = `<div style="margin-top:6px; color:#15803d; font-size:12.5px;">💡 Confidence Boost: Correct! Trust your understanding on these concepts.</div>`;
+    }
+
+    if (feedback.correct) {
+        feedbackBox.className = 'quiz-feedback-box feedback-correct';
+        feedbackBox.innerHTML = `
+            <strong>✓ Correct Answer!</strong> +${feedback.pointsEarned} pts (Streak: ${feedback.currentStreak})<br>
+            <strong>Explanation:</strong> ${escapeHtml(feedback.explanation || 'Well done!')}
+            ${diffChangeMsg}
+            ${metaAlert}
+        `;
+    } else {
+        feedbackBox.className = 'quiz-feedback-box feedback-wrong';
+        feedbackBox.innerHTML = `
+            <strong>✕ Incorrect Answer</strong><br>
+            <strong>Your Answer:</strong> ${escapeHtml(feedback.selectedAnswer)}<br>
+            <strong>Correct Answer:</strong> ${escapeHtml(feedback.correctAnswer)}<br>
+            <strong>Explanation:</strong> ${escapeHtml(feedback.explanation || 'Review this concept to master it.')}
+            ${diffChangeMsg}
+            ${metaAlert}
+        `;
+    }
+
+    feedbackBox.style.display = 'block';
+    currentQuizSession.nextPendingQuestion = feedback.nextQuestion;
+    nextBtn.style.display = 'inline-flex';
+}
+
+function loadNextQuizQuestion() {
+    displayQuizQuestion(currentQuizSession.nextPendingQuestion);
+    startQuizTimer();
+}
+
+// ==========================================
+// 6. MISTAKE ANALYZER MODULE
+// ==========================================
+async function loadMistakes() {
+    const tbody = document.getElementById('mistakesTableBody');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8;">Loading mistakes...</td></tr>';
+
+    try {
+        const student = currentUser ? currentUser.username : 'Student';
+        const res = await authFetch(`/api/analytics/mistakes?studentName=${encodeURIComponent(student)}`);
+        if (!res.ok) throw new Error('Failed to load mistakes');
+        cachedMistakes = await res.json();
+        filterMistakesRealtime();
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444;">Error: ${escapeHtml(e.message)}</td></tr>`;
+    }
+}
+
+function filterMistakesRealtime() {
+    const q = (document.getElementById('mistakeSearchInput').value || '').toLowerCase();
+    const diff = document.getElementById('mistakeDiffFilter').value;
+
+    let filtered = cachedMistakes;
+    if (diff !== 'ALL') {
+        filtered = filtered.filter(m => m.difficulty === diff);
+    }
+    if (q) {
+        filtered = filtered.filter(m =>
+            (m.topic && m.topic.toLowerCase().includes(q)) ||
+            (m.questionText && m.questionText.toLowerCase().includes(q)) ||
+            (m.selectedAnswer && m.selectedAnswer.toLowerCase().includes(q)) ||
+            (m.correctAnswer && m.correctAnswer.toLowerCase().includes(q))
+        );
+    }
+    renderMistakes(filtered);
+}
+
+function renderMistakes(mistakes) {
+    const tbody = document.getElementById('mistakesTableBody');
+    const summaryBox = document.getElementById('mistakeStatsSummary');
+
+    if (!mistakes || mistakes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#10b981; font-weight:600; padding:25px;">🎉 No mistakes recorded! Your accuracy is spotless.</td></tr>';
+        summaryBox.innerHTML = '<span class="status-pill pill-correct">0 Diagnostic Errors</span>';
+        return;
+    }
+
+    summaryBox.innerHTML = `
+        <span class="status-pill pill-wrong">${mistakes.length} Total Mistakes</span>
+        <span class="status-pill badge-neutral">Auto-diagnosed from attempts</span>
+    `;
+
+    tbody.innerHTML = mistakes.map(m => {
+        const qId = m.question ? m.question.id : 0;
+        const diffPill = `<span class="status-pill pill-${(m.difficulty || 'EASY').toLowerCase()}">${m.difficulty || 'EASY'}</span>`;
+
+        return `
+            <tr>
+                <td><strong>${escapeHtml(m.topic || 'General')}</strong><br>${diffPill}</td>
+                <td style="max-width:280px;">${escapeHtml(m.questionText || '')}</td>
+                <td style="color:#ef4444; font-weight:600;">${escapeHtml(m.selectedAnswer || '-')}</td>
+                <td style="color:#10b981; font-weight:600;">${escapeHtml(m.correctAnswer || '-')}</td>
+                <td style="font-size:12px; color:#64748b; max-width:260px;">${escapeHtml(m.question ? (m.question.explanation || m.question.sourceSentence) : '')}</td>
+                <td>
+                    ${qId > 0 ? `<button class="primary-btn" style="padding:6px 12px; font-size:12px;" onclick="retryMistakeQuestion(${qId})">Retry ↺</button>` : '-'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function retryMistakeQuestion(questionId) {
+    try {
+        const res = await authFetch(`/api/questions/${questionId}`);
+        if (!res.ok) throw new Error('Question not found');
+        const q = await res.json();
+
+        switchView('adaptive-view', document.getElementById('nav-adaptive'));
+        displayQuizQuestion(q);
+        startQuizTimer();
+        showMessage(`Retrying Question #${questionId}`);
+    } catch (e) {
+        showMessage('Error loading question: ' + e.message);
+    }
+}
+
+// ==========================================
+// 7. PROGRESS & LEARNING ANALYTICS MODULE
+// ==========================================
+async function loadProgressData() {
+    try {
+        const student = currentUser ? currentUser.username : 'Student';
+        const resProgress = await authFetch(`/api/progress?studentName=${encodeURIComponent(student)}`);
+        if (resProgress.ok) {
+            const data = await resProgress.json();
+            document.getElementById('progress-total-quizzes').textContent = data.totalQuizzesAttempted || 0;
+            document.getElementById('progress-overall-accuracy').textContent = (data.overallAccuracy || 0) + '%';
+            document.getElementById('progress-avg-time').textContent = (data.averageResponseTimeSec || 0) + 's';
+            document.getElementById('progress-puzzles-completed').textContent = data.puzzlesCompleted || 0;
+        }
+
+        const resHistory = await authFetch(`/api/progress/history?studentName=${encodeURIComponent(student)}`);
+        if (resHistory.ok) {
+            cachedHistory = await resHistory.json();
+            filterHistoryRealtime();
+        }
+    } catch (e) {
+        console.error('Error loading progress:', e);
+    }
+}
+
+function filterHistoryRealtime() {
+    const q = (document.getElementById('historySearchInput').value || '').toLowerCase();
+    let filtered = cachedHistory;
+    if (q) {
+        filtered = filtered.filter(h =>
+            (h.topic && h.topic.toLowerCase().includes(q)) ||
+            (h.questionText && h.questionText.toLowerCase().includes(q)) ||
+            (h.selectedAnswer && h.selectedAnswer.toLowerCase().includes(q))
+        );
+    }
+    renderProgressHistory(filtered);
+}
+
+function renderProgressHistory(history) {
+    const tbody = document.getElementById('progressHistoryTableBody');
+    if (!history || history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#94a3b8;">No historical records found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = history.map(h => {
+        const timeStr = h.attemptTimestamp ? new Date(h.attemptTimestamp).toLocaleString() : 'Just now';
+        const resultPill = h.correct
+            ? `<span class="status-pill pill-correct">Correct ✓</span>`
+            : `<span class="status-pill pill-wrong">Incorrect ✕</span>`;
+        const diffPill = `<span class="status-pill pill-${(h.difficulty || 'EASY').toLowerCase()}">${h.difficulty || 'EASY'}</span>`;
+
+        return `
+            <tr>
+                <td style="white-space:nowrap; color:#64748b; font-size:12px;">${timeStr}</td>
+                <td><strong>${escapeHtml(h.topic || 'General')}</strong></td>
+                <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(h.questionText || '')}</td>
+                <td>${diffPill}</td>
+                <td>${escapeHtml(h.selectedAnswer || '-')}</td>
+                <td>${resultPill}</td>
+                <td style="font-weight:600;">${h.responseTimeSec || 0}s</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ==========================================
+// 8. TEACHER STUDENT ANALYTICS MODULE
+// ==========================================
+async function loadTeacherStudents() {
+    const tbody = document.getElementById('studentsTableBody');
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#94a3b8;">Loading student records...</td></tr>';
+
+    try {
+        const res = await authFetch('/api/teacher/students');
+        if (!res.ok) throw new Error('Failed to load students');
+        cachedStudents = await res.json();
+        filterStudentsTable();
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#ef4444;">Error: ${escapeHtml(e.message)}</td></tr>`;
+    }
+}
+
+function filterStudentsTable() {
+    const q = (document.getElementById('studentSearchInput').value || '').toLowerCase();
+    let filtered = cachedStudents;
+    if (q) {
+        filtered = filtered.filter(s =>
+            (s.fullName && s.fullName.toLowerCase().includes(q)) ||
+            (s.username && s.username.toLowerCase().includes(q)) ||
+            (s.email && s.email.toLowerCase().includes(q)) ||
+            (s.strongestTopic && s.strongestTopic.toLowerCase().includes(q))
+        );
+    }
+    renderStudentsTable(filtered);
+}
+
+function renderStudentsTable(students) {
+    const tbody = document.getElementById('studentsTableBody');
+    if (!students || students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#94a3b8;">No registered students found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = students.map(s => {
+        let accPill = 'pill-correct';
+        if (s.overallAccuracy < 60) accPill = 'pill-wrong';
+        else if (s.overallAccuracy < 75) accPill = 'pill-medium';
+
+        return `
+            <tr>
+                <td><strong>${escapeHtml(s.fullName || s.username)}</strong></td>
+                <td><span style="font-family:monospace; color:#2563eb;">@${escapeHtml(s.username)}</span></td>
+                <td>${escapeHtml(s.email || '-')}</td>
+                <td>${s.totalQuizzes || 0}</td>
+                <td>${s.totalQuestionsAttempted || 0}</td>
+                <td><span class="status-pill ${accPill}">${s.overallAccuracy}%</span></td>
+                <td>${s.totalPuzzles || 0}</td>
+                <td><span class="badge badge-strong">${escapeHtml(s.strongestTopic || '-')}</span></td>
+                <td><span class="badge badge-weak">${escapeHtml(s.weakestTopic || '-')}</span></td>
+                <td>
+                    <button class="primary-btn" style="padding:5px 10px; font-size:11px;" onclick="viewStudentDetails(${s.id})">View Analytics →</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function viewStudentDetails(studentId) {
+    try {
+        const res = await authFetch(`/api/teacher/students/${studentId}/performance`);
+        if (!res.ok) throw new Error('Could not load student performance');
+        const data = await res.json();
+
+        document.getElementById('detailStudentName').textContent = data.student.fullName || data.student.username;
+        document.getElementById('detailStudentUsername').textContent = '@' + data.student.username + (data.student.email ? ' • ' + data.student.email : '');
+        document.getElementById('detailAttempts').textContent = (data.stats && data.stats.totalQuestionsAttempted) || 0;
+        document.getElementById('detailAccuracy').textContent = `${(data.stats && data.stats.overallAccuracy) || 0}%`;
+        document.getElementById('detailAvgTime').textContent = `${(data.stats && data.stats.averageResponseTimeSec) || 0}s`;
+
+        // Render topics
+        const topicTbody = document.getElementById('detailTopicTableBody');
+        if (data.topics && data.topics.length > 0) {
+            topicTbody.innerHTML = data.topics.map(t => `
+                <tr>
+                    <td><strong>${escapeHtml(t.topic)}</strong></td>
+                    <td>${t.totalQuestions}</td>
+                    <td>${t.correctQuestions}</td>
+                    <td><span class="badge ${t.accuracyPercentage >= 75 ? 'badge-strong' : (t.accuracyPercentage < 60 ? 'badge-weak' : 'badge-neutral')}">${t.accuracyPercentage}%</span></td>
+                    <td><span class="status-pill pill-${(t.currentDifficulty || 'EASY').toLowerCase()}">${t.currentDifficulty}</span></td>
+                </tr>
+            `).join('');
+        } else {
+            topicTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No topics attempted yet.</td></tr>';
+        }
+
+        // Render mistakes
+        const mistakesContainer = document.getElementById('detailMistakesContainer');
+        if (data.mistakes && data.mistakes.length > 0) {
+            mistakesContainer.innerHTML = data.mistakes.map(m => `
+                <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 14px; margin-bottom:8px; font-size:12.5px;">
+                    <div style="font-weight:600; color:#991b1b;">${escapeHtml(m.topic)}: ${escapeHtml(m.questionText)}</div>
+                    <div style="color:#b91c1c; margin-top:2px;">Selected: <strong>${escapeHtml(m.selectedAnswer)}</strong> | Correct: <strong>${escapeHtml(m.correctAnswer)}</strong></div>
+                </div>
+            `).join('');
+        } else {
+            mistakesContainer.innerHTML = '<p style="color:#10b981; font-size:13px; font-weight:600;">✓ No mistakes recorded for this student.</p>';
+        }
+
+        document.getElementById('studentDetailsModal').style.display = 'flex';
+    } catch (e) {
+        showMessage('Error: ' + e.message);
+    }
+}
+
+function closeStudentDetailsModal() {
+    document.getElementById('studentDetailsModal').style.display = 'none';
+}
+
+// ==========================================
+// UTILITY FUNCTIONS
+// ==========================================
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// ==========================================
+// APPLICATION ENTRY POINT
+// ==========================================
+window.onload = function() {
+    checkSession();
+};
+</script>
+
+</body>
+</html>
