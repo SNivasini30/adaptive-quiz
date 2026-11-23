@@ -49,9 +49,15 @@ public class PdfService {
             throw new IllegalArgumentException("File size exceeds maximum allowable limit of 25MB.");
         }
 
-        // Check for duplicate upload
-        if (pdfDocumentRepository.existsByFilenameAndFileSize(originalFilename, fileSize)) {
-            throw new IllegalArgumentException("Duplicate upload detected: '" + originalFilename + "' with identical file size has already been processed.");
+        // Check for duplicate upload per user
+        boolean isDuplicate;
+        if (user != null) {
+            isDuplicate = pdfDocumentRepository.existsByFilenameAndFileSizeAndUploadedById(originalFilename, fileSize, user.getId());
+        } else {
+            isDuplicate = pdfDocumentRepository.existsByFilenameAndFileSizeAndUploadedByIsNull(originalFilename, fileSize);
+        }
+        if (isDuplicate) {
+            throw new IllegalArgumentException("Duplicate upload detected: '" + originalFilename + "' with identical file size has already been processed in your account.");
         }
 
         // Extract text via dedicated extraction service

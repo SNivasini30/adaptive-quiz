@@ -63,10 +63,24 @@ public class WordSearchService {
                     throw new IllegalArgumentException("Access denied: You cannot access another student's private study material.");
                 }
             }
-            // All questions from the document are playable without requiring approval
-            candidateQuestions = questionRepository.findByDocumentId(documentId).stream()
-                    .filter(q -> q.getApprovalStatus() != ApprovalStatus.REJECTED)
-                    .toList();
+            // For teacher-uploaded documents, students can only play approved questions
+            if (document != null && document.getUploadedBy() != null && document.getUploadedBy().getRole() == com.quizmind.adaptive_quiz.model.UserRole.TEACHER) {
+                boolean isUploader = (studentName != null && studentName.equalsIgnoreCase(document.getUploadedBy().getUsername()));
+                if (!isUploader) {
+                    candidateQuestions = questionRepository.findByDocumentId(documentId).stream()
+                            .filter(q -> q.getApprovalStatus() == ApprovalStatus.APPROVED)
+                            .toList();
+                } else {
+                    candidateQuestions = questionRepository.findByDocumentId(documentId).stream()
+                            .filter(q -> q.getApprovalStatus() != ApprovalStatus.REJECTED)
+                            .toList();
+                }
+            } else {
+                // Student-uploaded document: student's own generated questions are immediately playable
+                candidateQuestions = questionRepository.findByDocumentId(documentId).stream()
+                        .filter(q -> q.getApprovalStatus() != ApprovalStatus.REJECTED)
+                        .toList();
+            }
             if (candidateQuestions.isEmpty()) {
                 candidateQuestions = questionRepository.findByDocumentId(documentId);
             }
